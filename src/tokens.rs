@@ -1,3 +1,18 @@
+/*
+ * * The Token System (Vocabulary)
+ * * This file defines the "Dictionary" of the LEXOR language.
+ * * It lists every possible word, symbol, and value that the interpreter understands.
+ * * * Its main jobs are:
+ * 1. Define Atomic Keywords (e.g., DECLARE, PRINT, IF) so the Lexer can tag them.
+ * 2. Define Data Types strictly according to the spec:
+ * - INT   -> i32 (4 bytes)
+ * - FLOAT -> f32 (4 bytes)
+ * - CHAR  -> char
+ * - BOOL  -> bool
+ * 3. Define Operators for Math (+, -) and Logic (AND, OR, NOT).
+ * 4. Serve as the shared "language" that lets the Lexer talk to the Parser.
+ */
+
 // We derive these traits so we can print tokens for debugging (Debug),
 // compare them (PartialEq), and copy them easily (Clone).
 // Rust gon get mad if i dont camelcase the enums so we do it like this.
@@ -57,10 +72,11 @@ pub enum Token {
     Assign,
 
     // --- Structure Symbols ---
-    Dollar, // $ (Acts as the statement terminator)
-    Comma,  // ,
-    LParen, // (
-    RParen, // )
+    Newline, // Represents the actual end of a line of code (\n)
+    Dollar,  // $ (Used in PRINT for outputting a new line)
+    Comma,   // ,
+    LParen,  // (
+    RParen,  // )
 
     // --- Error Handling ---
     Illegal(String), // Captures any junk characters we don't recognize
