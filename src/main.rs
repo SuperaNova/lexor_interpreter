@@ -1,5 +1,8 @@
 pub mod tokens;
+pub mod lexer;
+
 use tokens::Token;
+use lexer::Lexer;
 
 fn main() {
     let tokens = vec![
