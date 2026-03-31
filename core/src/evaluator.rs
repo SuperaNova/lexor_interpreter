@@ -82,7 +82,7 @@ fn eval_statement(
 
         Statement::Print(expr) => {
             let val = eval_expression(expr, env)?;
-            io.print(&val.to_string());
+            io.print(&format!("{}\n", val));
             Some(Object::Null)
         }
 

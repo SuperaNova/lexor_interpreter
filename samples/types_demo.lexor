@@ -1,0 +1,42 @@
+SCRIPT AREA
+START SCRIPT
+    %% LEXOR Type System Showcase
+    %% This script demonstrates all supported data types and their operations.
+
+    %% 1. Integers (INT)
+    DECLARE INT age = 21, year = 2024
+    PRINT: "Age: " & age
+    PRINT: "Year: " & year
+    PRINT: "Sum: " & (age + year)
+
+    %% 2. Floats (FLOAT)
+    DECLARE FLOAT pi = 3.1415, radius = 5.0
+    DECLARE FLOAT area = pi * radius * radius
+    PRINT: "Circle Area with radius " & radius & " is " & area
+
+    %% 3. Booleans (BOOL)
+    DECLARE BOOL is_rust_cool = TRUE
+    DECLARE BOOL is_debug_mode = FALSE
+    PRINT: "Is Rust cool? " & is_rust_cool
+    
+    IF (is_rust_cool)
+    START IF
+        PRINT: "Confirmed: Rust is awesome."
+    END IF
+
+    %% 4. Characters (CHAR)
+    DECLARE CHAR initial = 'A'
+    DECLARE CHAR symbol = '+'
+    PRINT: "Initial: " & initial
+    PRINT: "Symbol: " & symbol
+
+    %% 5. Strings (Evaluated Expression Output)
+    DECLARE INT x = 10
+    DECLARE INT y = 20
+    PRINT: "The result of " & x & " + " & y & " is " & (x + y)
+
+    %% 6. Newlines ($ token)
+    PRINT: "Line 1" & $ & "Line 2 (Using $ for newline)"
+
+    PRINT: "Types demo complete!"
+END SCRIPT

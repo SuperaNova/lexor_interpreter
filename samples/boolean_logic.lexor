@@ -1,0 +1,48 @@
+SCRIPT AREA
+START SCRIPT
+    %% LEXOR Boolean Logic & Precedence Showcase
+    
+    DECLARE BOOL a = TRUE
+    DECLARE BOOL b = FALSE
+    DECLARE BOOL c = TRUE
+
+    PRINT: "Testing complex logical expressions..."
+
+    %% 1. Basic AND / OR
+    IF (a AND b)
+    START IF
+        PRINT: "This should not print (TRUE AND FALSE is FALSE)"
+    END IF
+    ELSE
+    START IF
+        PRINT: "Correct: (TRUE AND FALSE) is FALSE"
+    END IF
+
+    %% 2. Operator Precedence (AND has higher precedence than OR)
+    %% TRUE OR TRUE AND FALSE  => TRUE OR (TRUE AND FALSE) => TRUE OR FALSE => TRUE
+    IF (a OR c AND b)
+    START IF
+        PRINT: "Correct: AND takes precedence over OR"
+    END IF
+
+    %% 3. NOT operator
+    IF (NOT b)
+    START IF
+        PRINT: "Correct: NOT FALSE is TRUE"
+    END IF
+
+    %% 4. Complex nesting with parentheses
+    IF ((a OR b) AND (NOT (b AND c)))
+    START IF
+        PRINT: "Correct: Complex nested logic resolved successfully"
+    END IF
+
+    %% 5. Comparison combined with logic
+    DECLARE INT score = 85
+    IF (score >= 80 AND score < 90)
+    START IF
+        PRINT: "Score " & score & " is in the B range."
+    END IF
+
+    PRINT: "Boolean logic demo complete!"
+END SCRIPT
