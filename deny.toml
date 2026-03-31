@@ -30,8 +30,8 @@ allow = [
 ]
 # Confidence threshold for detecting licenses (0.0 - 1.0)
 confidence-threshold = 0.8
-# Allow packages with no license (e.g. this project itself while unlicensed)
-unlicensed = "allow"
+# Skip license checks for private workspace members (i.e. this crate itself)
+private = { ignore = true }
 
 # ---------------------------------------------------------------------------
 # Bans — prevent duplicate or unwanted crates
