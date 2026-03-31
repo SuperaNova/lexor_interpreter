@@ -2,9 +2,13 @@ name: Rust CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
+
+permissions:
+  contents: read
+  pull-requests: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,31 +17,31 @@ jobs:
   build_and_test:
     name: Build & Test
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt, clippy
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
-    - name: Cache dependencies
-      uses: Swatinem/rust-cache@v2
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
 
-    - name: Check Formatting
-      run: cargo fmt --all -- --check
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
 
-    - name: Run Clippy with Reviewdog
-      uses: giraffate/clippy-action@v1
-      with:
-        reporter: 'github-pr-review'
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        clippy_flags: --all-targets --all-features -- -D warnings
+      - name: Run Clippy with Reviewdog
+        uses: giraffate/clippy-action@v1
+        with:
+          reporter: "github-pr-review"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          clippy_flags: --all-targets --all-features -- -D warnings
 
-    - name: Build
-      run: cargo build --verbose
+      - name: Build
+        run: cargo build --verbose
 
-    - name: Run Tests
-      run: cargo test --verbose
+      - name: Run Tests
+        run: cargo test --verbose
