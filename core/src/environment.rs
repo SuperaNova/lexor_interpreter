@@ -34,3 +34,10 @@ impl Environment {
         self.store.insert(name, (var_type, val));
     }
 }
+
+/// A trait for abstracting Standard Input / Standard Output.
+/// This prevents the engine from blocking the browser thread when compiled to WebAssembly.
+pub trait EnvironmentIO {
+    fn read_line(&mut self) -> String;
+    fn print(&mut self, text: &str);
+}

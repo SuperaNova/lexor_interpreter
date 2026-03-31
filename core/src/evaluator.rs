@@ -13,16 +13,15 @@
 //! - Identifiers natively requested lacking a strict preceding `DECLARE` block universally fail securely returning cache misses identically natively compiled C implementations would.
 
 use crate::ast::{Expression, Program, Statement};
-use crate::environment::Environment;
+use crate::environment::{Environment, EnvironmentIO};
 use crate::object::Object;
 use crate::tokens::Token;
-use std::io::{self, Write};
 
-pub fn eval_program(program: &Program, env: &mut Environment) -> Option<Object> {
+pub fn eval_program(program: &Program, env: &mut Environment, io: &mut dyn EnvironmentIO) -> Option<Object> {
     let mut result = None;
 
     for statement in &program.statements {
-        result = eval_statement(statement, env);
+        result = eval_statement(statement, env, io);
 
         if let Some(Object::Error(_)) = result {
             return result;
@@ -32,11 +31,11 @@ pub fn eval_program(program: &Program, env: &mut Environment) -> Option<Object> 
     result
 }
 
-fn eval_block_statement(statements: &Vec<Statement>, env: &mut Environment) -> Option<Object> {
+fn eval_block_statement(statements: &Vec<Statement>, env: &mut Environment, io: &mut dyn EnvironmentIO) -> Option<Object> {
     let mut result = None;
 
     for statement in statements {
-        result = eval_statement(statement, env);
+        result = eval_statement(statement, env, io);
 
         if let Some(Object::Error(_)) = result {
             return result;
@@ -46,7 +45,7 @@ fn eval_block_statement(statements: &Vec<Statement>, env: &mut Environment) -> O
     result.or(Some(Object::Null))
 }
 
-fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object> {
+fn eval_statement(statement: &Statement, env: &mut Environment, io: &mut dyn EnvironmentIO) -> Option<Object> {
     match statement {
         Statement::Expression(expr) => eval_expression(expr, env),
 
@@ -71,17 +70,13 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object
 
         Statement::Print(expr) => {
             let val = eval_expression(expr, env)?;
-            print!("{}", val);
-            io::stdout().flush().unwrap(); // Flush strictly ensures immediate render
+            io.print(&val.to_string());
             Some(Object::Null)
         }
 
         Statement::Scan(variables) => {
             for var_name in variables {
-                let mut input = String::new();
-                io::stdin()
-                    .read_line(&mut input)
-                    .expect("Failed to cleanly read terminal line input");
+                let input = io.read_line();
                 // Smart parsing of user input logic:
                 let trimmed = input.trim();
                 let obj = if let Ok(i) = trimmed.parse::<i32>() {
@@ -121,9 +116,9 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object
         } => {
             let cond_val = eval_expression(condition, env)?;
             if is_truthy(cond_val) {
-                eval_block_statement(consequence, env)
+                eval_block_statement(consequence, env, io)
             } else if let Some(alt) = alternative {
-                eval_block_statement(alt, env)
+                eval_block_statement(alt, env, io)
             } else {
                 Some(Object::Null)
             }
@@ -136,7 +131,7 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object
                     break;
                 }
 
-                let result = eval_block_statement(body, env);
+                let result = eval_block_statement(body, env, io);
                 if let Some(Object::Error(_)) = result {
                     return result;
                 }
@@ -150,7 +145,7 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object
             update,
             body,
         } => {
-            let init_result = eval_statement(initialization, env);
+            let init_result = eval_statement(initialization, env, io);
             if let Some(Object::Error(_)) = init_result {
                 return init_result;
             }
@@ -161,12 +156,12 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object
                     break;
                 }
 
-                let result = eval_block_statement(body, env);
+                let result = eval_block_statement(body, env, io);
                 if let Some(Object::Error(_)) = result {
                     return result;
                 }
 
-                let update_result = eval_statement(update, env);
+                let update_result = eval_statement(update, env, io);
                 if let Some(Object::Error(_)) = update_result {
                     return update_result;
                 }
@@ -402,12 +397,19 @@ mod tests {
     use crate::lexer::Lexer;
     use crate::parser::Parser;
 
+    struct MockIO;
+    impl EnvironmentIO for MockIO {
+        fn read_line(&mut self) -> String { String::new() }
+        fn print(&mut self, _text: &str) {}
+    }
+
     fn eval(input: &str) -> Option<Object> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
         let mut env = Environment::new();
-        eval_program(&program, &mut env)
+        let mut io = MockIO;
+        eval_program(&program, &mut env, &mut io)
     }
 
     // --- Basic Expression Evaluation ---
