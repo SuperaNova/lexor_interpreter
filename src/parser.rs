@@ -5,7 +5,7 @@
 //! # Core Responsibilities
 //! 1. **Statement Routing:** Employs a Top-Down Recursive Descent technique sequentially structuring layout blocks exactly dynamically.
 //! 2. **Expression Ordering:** Utillizes Top-Down Operator Precedence (the Pratt Algorithm) identically routing math correctly without horrific nesting.
-//! 
+//!
 //! # Special LEXOR Parsing Rules:
 //! - Enforces strict native right-to-left associativity safely for chain-assignments (`x = y = z`).
 //! - Guarantees strict sequential consumption of `END IF` and `END REPEAT` delimiters universally prior to routing fallback `ELSE` alternatives.
