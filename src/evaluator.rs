@@ -56,9 +56,12 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object
                     Some(expr) => eval_expression(expr, env)?,
                     None => Object::Null,
                 };
-                
+
                 if let Err(msg) = check_type_match(var_type, &init_val) {
-                    return Some(Object::Error(format!("Type mismatch explicitly prevented in DECLARE for '{}': {}", name, msg)));
+                    return Some(Object::Error(format!(
+                        "Type mismatch explicitly prevented in DECLARE for '{}': {}",
+                        name, msg
+                    )));
                 }
 
                 env.set(name.clone(), var_type.clone(), init_val);
@@ -95,11 +98,17 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Option<Object
 
                 if let Some(var_type) = env.get_type(var_name).cloned() {
                     if let Err(msg) = check_type_match(&var_type, &obj) {
-                        return Some(Object::Error(format!("Type mismatch safely prevented in SCAN input for '{}': {}", var_name, msg)));
+                        return Some(Object::Error(format!(
+                            "Type mismatch safely prevented in SCAN input for '{}': {}",
+                            var_name, msg
+                        )));
                     }
                     env.set(var_name.clone(), var_type, obj);
                 } else {
-                    return Some(Object::Error(format!("Cannot aggressively scan into strictly undeclared variable '{}'", var_name)));
+                    return Some(Object::Error(format!(
+                        "Cannot aggressively scan into strictly undeclared variable '{}'",
+                        var_name
+                    )));
                 }
             }
             Some(Object::Null)
@@ -208,7 +217,10 @@ fn eval_expression(expression: &Expression, env: &mut Environment) -> Option<Obj
                     let val = eval_expression(right, env)?;
                     if let Some(var_type) = env.get_type(name).cloned() {
                         if let Err(msg) = check_type_match(&var_type, &val) {
-                            return Some(Object::Error(format!("Type mismatch cleanly blocked in assignment to '{}': {}", name, msg)));
+                            return Some(Object::Error(format!(
+                                "Type mismatch cleanly blocked in assignment to '{}': {}",
+                                name, msg
+                            )));
                         }
                         env.set(name.clone(), var_type.clone(), val.clone());
                         return Some(val);
@@ -376,8 +388,11 @@ fn check_type_match(expected_type: &Token, obj: &Object) -> Result<(), String> {
         (Token::TypeFloat, Object::Float(_)) => Ok(()),
         (Token::TypeBool, Object::Boolean(_)) => Ok(()),
         (Token::TypeChar, Object::Character(_)) => Ok(()),
-        (_, Object::Null) => Ok(()), // Null is permitted generally when no initialization is supplied 
-        (t, o) => Err(format!("Expected strongly defined type {:?}, but received {}", t, o)),
+        (_, Object::Null) => Ok(()), // Null is permitted generally when no initialization is supplied
+        (t, o) => Err(format!(
+            "Expected strongly defined type {:?}, but received {}",
+            t, o
+        )),
     }
 }
 

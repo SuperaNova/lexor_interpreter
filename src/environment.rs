@@ -1,6 +1,6 @@
 //! The LEXOR Runtime Environment Memory Cache.
 //!
-//! This module provides the `Environment` struct, acting as the immediate RAM during execution. 
+//! This module provides the `Environment` struct, acting as the immediate RAM during execution.
 //! It wraps a HashMap to natively store and retrieve dynamically declared variables and their strict types reliably.
 
 use crate::object::Object;
