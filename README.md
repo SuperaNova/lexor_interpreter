@@ -1,52 +1,45 @@
-# LEXOR Programming Language Engine
+# LEXOR Programming Language
 
-A perfectly crafted tree-walking evaluation macro language and execution engine built entirely in modern, idiomatic Rust. It parses source files safely and dynamically structures them into powerful Abstract Syntax Trees.
+A tree-walking interpreter for the LEXOR programming language, implemented in Rust. It parses source files and executes them using a standard Abstract Syntax Tree (AST) approach.
 
 ## Usage
-Since LEXOR is built as a highly modular Cargo Workspace, you can run the interpreter natively from the CLI:
+The project is structured as a Cargo Workspace. You can run the interpreter through the CLI:
 
 ```bash
 cargo run --package lexor_cli -- samples/fibonacci.lexor
 ```
 
-Or, you can use the WebAssembly bindings directly in any JavaScript web frontend by building the `wasm` crate!
+You can also use the WebAssembly bindings in a browser environment by building the `wasm` crate.
 
-## Workspace Structure
-This structure fundamentally complies with classic compilation engine milestones, decoupled across three distinct crates:
+## Project Structure
+The code is split into three main parts:
 
-### 1. `core/` (The Engine)
-The heavily isolated pure logic engine.
-- `core/src/lexer.rs`: The Lexical Analyzer (Scanner).
-- `core/src/parser.rs`: The Syntax Analyzer mapping Tokens natively to AST shapes.
-- `core/src/ast.rs`: The 3D Enum structure definitions statically representing the Tree. 
-- `core/src/evaluator.rs`: The execution logic safely walking AST nodes into actions.
-- `core/src/object.rs`: The unified generic typed wrappers for all Lexor variables (`String`, `Integer`, `Null`).
+### 1. `core/` (The Interpreter)
+Contains the core logic for the language.
+- `lexer.rs`: Breaks source text into tokens.
+- `parser.rs`: Converts tokens into an AST (uses Pratt parsing for math).
+- `ast.rs`: Definitions for the tree nodes.
+- `evaluator.rs`: Walks the tree to execute the code.
+- `object.rs`: The internal value types (Integers, Floats, Booleans, etc.).
 
-### 2. `cli/` (Terminal Executor)
-Provides the standard Terminal string input/output implementations for the engine and acts as a runnable `.exe`.
+### 2. `cli/` (CLI Tool)
+A simple wrapper that provides terminal input/output for the interpreter.
 
-### 3. `wasm/` (WebAssembly Bridge)
-Injects Mock inputs and strings capturing to securely run `core` in web browsers without freezing the Javascript thread.
+### 3. `wasm/` (Web/JS Support)
+Provides bindings to run the interpreter in a browser or Node.js environment via WebAssembly.
 
-## Features
-- **Pratt Parsing Engine:** Enforces perfect algorithmic Order of Operations for deep mathematics and safely manages right-associative chained variables dynamically.
-- **Top-Down Recursive Descent:** Strictly guarantees clean execution of nested `IF`, `ELSE`, `FOR`, and `REPEAT WHEN` control block validations iteratively.
-- **Safely Typed Evaluator:** The Execution Engine structurally evaluates mathematics but fails gracefully before panicking by explicitly bubbling `Object::Error` variants immediately upon logic failures (like dividing by zero).
-- **RAM Environment State:** Employs standard Rust HashMaps linking assignments indefinitely securely over runtime iteration states identically to modern scripting languages.
+## Main Features
+- **Pratt Parsing:** Handles math order of operations (precedence) correctly.
+- **Control Flow:** Supports basic `IF`, `ELSE`, `FOR`, and `REPEAT WHEN` blocks.
+- **Type Checking:** Simple runtime checks for variable assignments.
+- **Environment:** A basic memory store using HashMaps to track variables during execution.
 
-## Developer Utilities & Local Checking
-To securely check code locally before pushing to prevent messy CI/CD failures (like Cargo Deny license rejections or Test panic tracebacks), we've bundled convenient cross-platform wrapper scripts!
-
-Simply run one of the following commands depending on your operating system:
+## Testing & Local Checks
+To check formatting, run tests, and verify lints locally, you can use the provided scripts:
 
 **Windows PowerShell:**
 ```powershell
 .\scripts\check.ps1
-```
-
-**Windows Command Prompt:**
-```bat
-.\scripts\check.bat
 ```
 
 **Linux / macOS:**
@@ -54,6 +47,7 @@ Simply run one of the following commands depending on your operating system:
 ./scripts/check.sh
 ```
 
-*(Note: Building and scanning natively requires installing `cargo-deny` first: `cargo install --locked cargo-deny`)*
-## Architecture & Maintenance
-See the `docs/` folder for deeply structural documentation concerning exactly how `lexer.rs` behaves, and uniquely how the `parser.rs` Pratt Algorithm tokenizes precedence correctly over expressions!
+*(Note: These scripts require `cargo-deny` to be installed for license/security checks: `cargo install --locked cargo-deny`)*
+
+## Documentation
+Additional details on how the lexer, parser, and evaluator were built can be found in the `docs/` folder.
