@@ -48,7 +48,7 @@ jobs:
         working-directory: ./wasm/pkg
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          npm version --no-git-tag-version "$TAG"
+          npm version "$TAG" --allow-same-version --no-git-tag-version
 
       - name: Publish to GitHub Packages
         working-directory: ./wasm/pkg
