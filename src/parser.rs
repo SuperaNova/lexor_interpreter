@@ -1,17 +1,30 @@
+//! The LEXOR Pratt-Parsing Engine & Recursive Descent Flow logic.
+//!
+//! Constructs the multi-dimensional Abstract Syntax Tree safely from the Lexer stream.
+//!
+//! # Core Responsibilities
+//! 1. **Statement Routing:** Employs a Top-Down Recursive Descent technique sequentially structuring layout blocks exactly dynamically.
+//! 2. **Expression Ordering:** Utillizes Top-Down Operator Precedence (the Pratt Algorithm) identically routing math correctly without horrific nesting.
+//! 
+//! # Special LEXOR Parsing Rules:
+//! - Enforces strict native right-to-left associativity safely for chain-assignments (`x = y = z`).
+//! - Guarantees strict sequential consumption of `END IF` and `END REPEAT` delimiters universally prior to routing fallback `ELSE` alternatives.
+//! - Resolves `$` sequential string newline concatenations effortlessly identically to standard structural binary math logic.
+
 use crate::ast::{Expression, Program, Statement};
 use crate::lexer::Lexer;
 use crate::tokens::Token;
 
 pub const PREC_LOWEST: u8 = 1;
-pub const PREC_ASSIGN: u8 = 2;      // =
-pub const PREC_LOGICAL_OR: u8 = 3;  // OR
+pub const PREC_ASSIGN: u8 = 2; // =
+pub const PREC_LOGICAL_OR: u8 = 3; // OR
 pub const PREC_LOGICAL_AND: u8 = 4; // AND
-pub const PREC_EQUALS: u8 = 5;      // ==, <>
+pub const PREC_EQUALS: u8 = 5; // ==, <>
 pub const PREC_LESSGREATER: u8 = 6; // >, <, >=, <=
-pub const PREC_SUM: u8 = 7;         // +, -, &
-pub const PREC_PRODUCT: u8 = 8;     // *, /, %
-pub const PREC_PREFIX: u8 = 9;      // -X, NOT X, [#]
-pub const PREC_CALL: u8 = 10;       // () grouping
+pub const PREC_SUM: u8 = 7; // +, -, &
+pub const PREC_PRODUCT: u8 = 8; // *, /, %
+pub const PREC_PREFIX: u8 = 9; // -X, NOT X, [#]
+pub const PREC_CALL: u8 = 10; // () grouping
 
 pub fn get_precedence(token: &Token) -> u8 {
     match token {
@@ -74,7 +87,10 @@ impl<'a> Parser<'a> {
                 return true;
             }
         }
-        self.errors.push(format!("Expected next token to be {:?}, got {:?}", token, self.peek_token));
+        self.errors.push(format!(
+            "Expected next token to be {:?}, got {:?}",
+            token, self.peek_token
+        ));
         false
     }
 
@@ -86,7 +102,7 @@ impl<'a> Parser<'a> {
 
         while self.peek_token.is_some() && precedence < self.peek_precedence() {
             let next_token = self.peek_token.clone().unwrap();
-            
+
             if !self.is_infix(&next_token) {
                 return Some(left_exp);
             }
@@ -108,37 +124,54 @@ impl<'a> Parser<'a> {
             Token::CharLit(val) => Some(Expression::CharLiteral(*val)),
             Token::StringLit(val) => Some(Expression::StringLiteral(val.clone())),
             Token::Dollar => Some(Expression::StringLiteral("\n".to_string())),
-            
+
             Token::Minus | Token::Plus | Token::Not => {
                 let operator = token.clone();
                 self.next_token(); // consume operator
                 let right = self.parse_expression(PREC_PREFIX)?;
-                Some(Expression::Prefix { operator, right: Box::new(right) })
-            },
+                Some(Expression::Prefix {
+                    operator,
+                    right: Box::new(right),
+                })
+            }
 
             Token::LParen => {
                 self.next_token(); // consume '('
                 let exp = self.parse_expression(PREC_LOWEST)?;
-                
+
                 if self.expect_peek(Token::RParen) {
                     Some(exp)
                 } else {
                     None
                 }
-            },
+            }
 
             _ => {
-                self.errors.push(format!("No prefix parse function for {:?}", token));
+                self.errors
+                    .push(format!("No prefix parse function for {:?}", token));
                 None
             }
         }
     }
 
     fn is_infix(&self, token: &Token) -> bool {
-        matches!(token,
-            Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Modulo |
-            Token::Eq | Token::Neq | Token::Lt | Token::Gt | Token::Lte | Token::Gte |
-            Token::And | Token::Or | Token::Concat | Token::Assign
+        matches!(
+            token,
+            Token::Plus
+                | Token::Minus
+                | Token::Star
+                | Token::Slash
+                | Token::Modulo
+                | Token::Eq
+                | Token::Neq
+                | Token::Lt
+                | Token::Gt
+                | Token::Lte
+                | Token::Gte
+                | Token::And
+                | Token::Or
+                | Token::Concat
+                | Token::Assign
         )
     }
 
@@ -147,7 +180,7 @@ impl<'a> Parser<'a> {
         self.next_token(); // move past operator
 
         let right = if operator == Token::Assign {
-            // Right-associative: we parse the right side with slightly lower precedence 
+            // Right-associative: we parse the right side with slightly lower precedence
             // so we keep grabbing deeper assignments into the right arm.
             self.parse_expression(precedence - 1)?
         } else {
@@ -165,25 +198,37 @@ impl<'a> Parser<'a> {
     // --- STATEMENT PARSING ---
 
     pub fn parse_program(&mut self) -> Option<Program> {
-        let mut program = Program { statements: Vec::new() };
+        let mut program = Program {
+            statements: Vec::new(),
+        };
 
         self.skip_newlines();
 
         // We expect `SCRIPT AREA` initially
-        if self.current_token != Some(Token::Script) { 
-            self.errors.push(format!("Expected SCRIPT AREA, got {:?}", self.current_token));
-            return None; 
+        if self.current_token != Some(Token::Script) {
+            self.errors.push(format!(
+                "Expected SCRIPT AREA, got {:?}",
+                self.current_token
+            ));
+            return None;
         }
-        if !self.expect_peek(Token::Area) { return None; }
+        if !self.expect_peek(Token::Area) {
+            return None;
+        }
         self.next_token(); // consume Area
         self.skip_newlines();
 
         // We expect `START SCRIPT`
-        if self.current_token != Some(Token::Start) { 
-            self.errors.push(format!("Expected START SCRIPT, got {:?}", self.current_token));
-            return None; 
+        if self.current_token != Some(Token::Start) {
+            self.errors.push(format!(
+                "Expected START SCRIPT, got {:?}",
+                self.current_token
+            ));
+            return None;
         }
-        if !self.expect_peek(Token::Script) { return None; }
+        if !self.expect_peek(Token::Script) {
+            return None;
+        }
         self.next_token(); // consume Script
         self.skip_newlines();
 
@@ -235,9 +280,10 @@ impl<'a> Parser<'a> {
         match type_token {
             Token::TypeInt | Token::TypeFloat | Token::TypeBool | Token::TypeChar => {
                 self.next_token();
-            },
+            }
             _ => {
-                self.errors.push(format!("Expected type after DECLARE, got {:?}", type_token));
+                self.errors
+                    .push(format!("Expected type after DECLARE, got {:?}", type_token));
                 return None;
             }
         }
@@ -276,7 +322,7 @@ impl<'a> Parser<'a> {
 
     fn parse_print_statement(&mut self) -> Option<Statement> {
         self.next_token(); // consume PRINT
-        
+
         if let Some(Token::Colon) = self.current_token {
             self.next_token(); // consume Colon
         } else {
@@ -286,13 +332,13 @@ impl<'a> Parser<'a> {
 
         let expr = self.parse_expression(PREC_LOWEST)?;
         self.next_token(); // step past expression
-        
+
         Some(Statement::Print(expr))
     }
 
     fn parse_scan_statement(&mut self) -> Option<Statement> {
         self.next_token(); // consume SCAN
-        
+
         if let Some(Token::Colon) = self.current_token {
             self.next_token(); // consume Colon
         } else {
@@ -321,18 +367,23 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_if_statement(&mut self) -> Option<Statement> {
-        if !self.expect_peek(Token::LParen) { return None; }
-        
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+
         let condition = self.parse_expression(PREC_LOWEST)?;
         self.next_token(); // step past `)`
         self.skip_newlines();
 
         if self.current_token != Some(Token::Start) {
-            self.errors.push("Expected START after IF (...)".to_string());
+            self.errors
+                .push("Expected START after IF (...)".to_string());
             return None;
         }
         self.next_token(); // consume Start
-        if self.current_token != Some(Token::If) { return None; }
+        if self.current_token != Some(Token::If) {
+            return None;
+        }
         self.next_token(); // consume If
         self.skip_newlines();
 
@@ -349,9 +400,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if self.current_token != Some(Token::End) { return None; }
+        if self.current_token != Some(Token::End) {
+            return None;
+        }
         self.next_token(); // consume END
-        if self.current_token != Some(Token::If) { return None; }
+        if self.current_token != Some(Token::If) {
+            return None;
+        }
         self.next_token(); // consume IF
 
         let mut alternative = None;
@@ -359,7 +414,7 @@ impl<'a> Parser<'a> {
 
         if let Some(Token::Else) = self.current_token {
             self.next_token(); // consume ELSE
-            
+
             if let Some(Token::If) = self.current_token {
                 if let Some(else_if_stmt) = self.parse_if_statement() {
                     alternative = Some(vec![else_if_stmt]);
@@ -367,11 +422,13 @@ impl<'a> Parser<'a> {
             } else {
                 self.skip_newlines();
                 if self.current_token != Some(Token::Start) {
-                     self.errors.push("Expected START after ELSE".to_string());
-                     return None;
+                    self.errors.push("Expected START after ELSE".to_string());
+                    return None;
                 }
                 self.next_token(); // consume Start
-                if self.current_token != Some(Token::If) { return None; }
+                if self.current_token != Some(Token::If) {
+                    return None;
+                }
                 self.next_token(); // consume If
                 self.skip_newlines();
 
@@ -388,10 +445,14 @@ impl<'a> Parser<'a> {
                     }
                 }
                 alternative = Some(alt_stmts);
-                
-                if self.current_token != Some(Token::End) { return None; }
+
+                if self.current_token != Some(Token::End) {
+                    return None;
+                }
                 self.next_token(); // consume END
-                if self.current_token != Some(Token::If) { return None; }
+                if self.current_token != Some(Token::If) {
+                    return None;
+                }
                 self.next_token(); // consume If
             }
         }
@@ -404,35 +465,48 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_for_statement(&mut self) -> Option<Statement> {
-        if !self.expect_peek(Token::LParen) { return None; }
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
         self.next_token(); // step firmly cleanly past the `(` so expression inside handles it
 
         let initialization = Box::new(self.parse_statement()?);
-        if self.current_token != Some(Token::Comma) { 
-            self.errors.push("Expected ',' after initialization in FOR".to_string());
-            return None; 
+        if self.current_token != Some(Token::Comma) {
+            self.errors
+                .push("Expected ',' after initialization in FOR".to_string());
+            return None;
         }
         self.next_token(); // consume comma
 
         let condition = self.parse_expression(PREC_LOWEST)?;
         self.next_token(); // step identically past condition 
-        if self.current_token != Some(Token::Comma) { 
-            self.errors.push(format!("Expected ',' after condition in FOR, got {:?}", self.current_token));
-            return None; 
+        if self.current_token != Some(Token::Comma) {
+            self.errors.push(format!(
+                "Expected ',' after condition in FOR, got {:?}",
+                self.current_token
+            ));
+            return None;
         }
         self.next_token(); // consume comma
 
         let update = Box::new(self.parse_statement()?);
-        if self.current_token != Some(Token::RParen) { 
-            self.errors.push(format!("Expected ')' to close FOR, got {:?}", self.current_token));
-            return None; 
+        if self.current_token != Some(Token::RParen) {
+            self.errors.push(format!(
+                "Expected ')' to close FOR, got {:?}",
+                self.current_token
+            ));
+            return None;
         }
         self.next_token(); // consume RParen
         self.skip_newlines();
 
-        if self.current_token != Some(Token::Start) { return None; }
+        if self.current_token != Some(Token::Start) {
+            return None;
+        }
         self.next_token(); // consume START
-        if self.current_token != Some(Token::For) { return None; }
+        if self.current_token != Some(Token::For) {
+            return None;
+        }
         self.next_token(); // consume FOR
         self.skip_newlines();
 
@@ -449,9 +523,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if self.current_token != Some(Token::End) { return None; }
+        if self.current_token != Some(Token::End) {
+            return None;
+        }
         self.next_token();
-        if self.current_token != Some(Token::For) { return None; }
+        if self.current_token != Some(Token::For) {
+            return None;
+        }
         self.next_token();
 
         Some(Statement::For {
@@ -463,17 +541,25 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_repeat_when_statement(&mut self) -> Option<Statement> {
-        if !self.expect_peek(Token::When) { return None; }
-        if !self.expect_peek(Token::LParen) { return None; }
-        
+        if !self.expect_peek(Token::When) {
+            return None;
+        }
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+
         let condition = self.parse_expression(PREC_LOWEST)?;
         self.next_token(); // cleanly step past `)`
-        
+
         self.skip_newlines();
 
-        if self.current_token != Some(Token::Start) { return None; }
+        if self.current_token != Some(Token::Start) {
+            return None;
+        }
         self.next_token(); // consume START
-        if self.current_token != Some(Token::Repeat) { return None; }
+        if self.current_token != Some(Token::Repeat) {
+            return None;
+        }
         self.next_token(); // consume REPEAT
         self.skip_newlines();
 
@@ -490,9 +576,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if self.current_token != Some(Token::End) { return None; }
+        if self.current_token != Some(Token::End) {
+            return None;
+        }
         self.next_token();
-        if self.current_token != Some(Token::Repeat) { return None; }
+        if self.current_token != Some(Token::Repeat) {
+            return None;
+        }
         self.next_token();
 
         Some(Statement::RepeatWhen { condition, body })
@@ -512,7 +602,9 @@ mod tests {
     fn parse(input: &str) -> Expression {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        let expr = parser.parse_expression(PREC_LOWEST).expect("Expected an expression");
+        let expr = parser
+            .parse_expression(PREC_LOWEST)
+            .expect("Expected an expression");
         assert_eq!(parser.errors.len(), 0, "Parser errors: {:?}", parser.errors);
         expr
     }

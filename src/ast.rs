@@ -1,3 +1,9 @@
+//! The LEXOR Abstract Syntax Tree (AST).
+//!
+//! This module contains the strictly typed Enums and Structs that securely represent the 
+//! nested hierarchical structure of parsed code. The Parser functionally constructs these nodes, 
+//! and the Evaluator naturally consumes them.
+
 use crate::tokens::Token;
 
 /// The overall program containing a sequence of statements.
@@ -27,7 +33,7 @@ pub enum Statement {
         condition: Expression,
         consequence: Vec<Statement>,
         /// If there's an ELSE IF, it can simply be a Vec containing a single `Statement::If` wrapped inside this alternative.
-        alternative: Option<Vec<Statement>>, 
+        alternative: Option<Vec<Statement>>,
     },
 
     /// FOR (init, condition, update) START FOR ... END FOR

@@ -1,0 +1,23 @@
+SCRIPT AREA
+START SCRIPT
+    %% Iterative Factorial Calculator using a FOR loop and IF conditions
+    DECLARE INT result = 1
+    DECLARE INT n = 7
+    DECLARE INT i = 1
+    
+    IF (n == 0)
+    START IF
+        PRINT: "Factorial of 0 is: 1" & $
+    END IF
+    ELSE
+    START IF
+        %% Evaluating iterations
+        FOR (i = 1, i <= n, i = i + 1)
+        START FOR
+            result = result * i
+        END FOR
+        
+        PRINT: "Factorial of " & n & " is: " & result & $
+    END IF
+    
+END SCRIPT

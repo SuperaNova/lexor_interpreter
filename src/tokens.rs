@@ -1,21 +1,18 @@
-/*
- * * The Token System (Vocabulary)
- * * This file defines the "Dictionary" of the LEXOR language.
- * * It lists every possible word, symbol, and value that the interpreter understands.
- * * * Its main jobs are:
- * 1. Define Atomic Keywords (e.g., DECLARE, PRINT, IF) so the Lexer can tag them.
- * 2. Define Data Types strictly according to the spec:
- * - INT   -> i32 (4 bytes)
- * - FLOAT -> f32 (4 bytes)
- * - CHAR  -> char
- * - BOOL  -> bool
- * 3. Define Operators for Math (+, -) and Logic (AND, OR, NOT).
- * 4. Serve as the shared "language" that lets the Lexer talk to the Parser.
- */
+//! The LEXOR Token Dictionary.
+//!
+//! This module defines the complete, finite vocabulary ("Dictionary") for the LEXOR programming language.
+//! It serves as the exclusive shared explicit language that allows the Lexer to safely communicate with the Parser.
+//!
+//! # Core Responsibilities
+//! 1. **Atomic Keywords:** Defines strict structural bounds explicitly (`DECLARE`, `PRINT`, `IF`).
+//! 2. **Data Types:** Maps LEXOR specifications safely to explicit native Rust equivalents:
+//!    - `INT` natively safely maps to a 4-byte `i32`.
+//!    - `FLOAT` resolves securely explicitly to `f32`.
+//!    - `CHAR` and `BOOL` specifically translate structurally to `char` and `bool` flags.
+//! 3. **Operator Bindings:** Safely uniformly catalogs native mathematics (`+`, `-`) and strict abstract logic gates (`AND`, `OR`, `NOT`).
 
-// We derive these traits so we can print tokens for debugging (Debug),
-// compare them (PartialEq), and copy them easily (Clone).
-// Rust gon get mad if i dont camelcase the enums so we do it like this.
+/// Enums are structurally explicitly defined securely in PascalCase to satisfy explicitly strict idiomatic Rust compilation.
+/// We explicitly derive Debug (for logging natively), PartialEq (for safe explicit equality checks), and Clone (to safely explicitly dynamically replicate tokens identically out to the Parser).
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     // --- Atomic Keywords ---

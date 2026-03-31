@@ -1,5 +1,10 @@
-use std::collections::HashMap;
+//! The LEXOR Runtime Environment Memory Cache.
+//!
+//! This module provides the `Environment` struct, acting as the immediate RAM during execution. 
+//! It wraps a HashMap to natively store and retrieve dynamically declared variables securely.
+
 use crate::object::Object;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
