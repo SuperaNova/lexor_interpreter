@@ -7,16 +7,14 @@ use crate::object::Object;
 use crate::tokens::Token;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Environment {
     store: HashMap<String, (Token, Object)>,
 }
 
 impl Environment {
     pub fn new() -> Self {
-        Environment {
-            store: HashMap::new(),
-        }
+        Self::default()
     }
 
     /// Queries the memory store for a saved variable.

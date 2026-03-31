@@ -6,6 +6,7 @@ cargo fmt --all
 
 echo -e "\n\033[1;36m--- 2. Running Lints ---\033[0m"
 cargo clippy --workspace
+cargo clippy -p lexor_core -- -D warnings
 
 echo -e "\n\033[1;36m--- 3. Running Workspace Tests ---\033[0m"
 cargo test --workspace

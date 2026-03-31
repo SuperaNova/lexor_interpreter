@@ -1,0 +1,29 @@
+START SCRIPT
+    %% Number Guesser Game in LEXOR
+    DECLARE INT target = 42
+    DECLARE INT guess = 0
+
+    PRINT "I'm thinking of a number between 1 and 100!"
+
+    REPEAT
+    START REPEAT
+        PRINT "Enter your guess: "
+        SCAN guess
+
+        IF (guess < target)
+        START IF
+            PRINT "Too low! Try again."
+        END IF
+        ELSE IF (guess > target)
+        START IF
+            PRINT "Too high! Try again."
+        END IF
+        ELSE
+        START IF
+            PRINT "Congratulations! You guessed it!"
+        END IF
+    END REPEAT
+    WHEN (guess != target)
+
+    PRINT "Game Over."
+END SCRIPT

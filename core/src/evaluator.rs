@@ -295,19 +295,18 @@ fn eval_infix_expression(
         return Some(Object::String(format!("{}{}", left, right)));
     }
 
-    if *operator == Token::And
+    if (*operator == Token::And
         || *operator == Token::Or
         || *operator == Token::Eq
-        || *operator == Token::Neq
+        || *operator == Token::Neq)
+        && let (Object::Boolean(l), Object::Boolean(r)) = (&left, &right)
     {
-        if let (Object::Boolean(l), Object::Boolean(r)) = (&left, &right) {
-            match operator {
-                Token::And => return Some(Object::Boolean(*l && *r)),
-                Token::Or => return Some(Object::Boolean(*l || *r)),
-                Token::Eq => return Some(Object::Boolean(l == r)),
-                Token::Neq => return Some(Object::Boolean(l != r)),
-                _ => {}
-            }
+        match operator {
+            Token::And => return Some(Object::Boolean(*l && *r)),
+            Token::Or => return Some(Object::Boolean(*l || *r)),
+            Token::Eq => return Some(Object::Boolean(l == r)),
+            Token::Neq => return Some(Object::Boolean(l != r)),
+            _ => {}
         }
     }
 
@@ -623,5 +622,50 @@ END SCRIPT
     fn test_identifier_not_declared_is_error() {
         let input = "SCRIPT AREA\nSTART SCRIPT\n ghost_var \nEND SCRIPT";
         matches!(eval(input).unwrap(), Object::Error(_));
+    }
+
+    // --- Complex Edge Cases ---
+
+    #[test]
+    fn test_deep_nesting() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE INT result = 0
+    DECLARE INT i = 0
+    
+    FOR (i = 1, i <= 3, i = i + 1)
+    START FOR
+        IF (i == 2)
+        START IF
+            result = result + 10
+        END IF
+        ELSE
+        START IF
+            result = result + 1
+        END IF
+    END FOR
+    
+    result
+END SCRIPT
+";
+        // i=1 -> result=1. i=2 -> result=11. i=3 -> result=12.
+        assert_eq!(eval(input).unwrap(), Object::Integer(12));
+    }
+
+    #[test]
+    fn test_logical_operator_edge_cases() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE BOOL a = TRUE
+    DECLARE BOOL b = FALSE
+    DECLARE BOOL c = TRUE
+    
+    (a AND b) OR (a AND c)
+END SCRIPT
+";
+        // (true and false) = false. false or (true and true) = true.
+        assert_eq!(eval(input).unwrap(), Object::Boolean(true));
     }
 }
