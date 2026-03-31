@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (do not publish package)'
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   publish-wasm:
@@ -38,6 +45,11 @@ jobs:
 
       - name: Publish to GitHub Packages
         working-directory: ./wasm/pkg
-        run: npm publish
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
