@@ -1,13 +1,14 @@
 //! The LEXOR Scanner (Lexical Analyzer).
 //!
 //! The Lexer (Tokenizer) is the critical first step of the interpreter.
-//! It takes the raw source code text (e.g., "DECLARE INT x") and lazily 
+//! It takes the raw source code text (e.g., "DECLARE INT x") and lazily
 //! breaks it tightly into categorized `Tokens` utilizing a standard Rust Iterator pattern.
 //!
 //! # Core Responsibilities
 //! 1. **Character Consumption:** Reads the text character by character iteratively matching Lexor grammar.
 //! 2. **Categorization:** Groups arbitrary characters accurately into structural `Keywords` or `Identifiers`.
 //! 3. **Type Recognition:** Distinguishes purely typed numeric variables natively (`Int` vs `Float`).
+//! 4. **Position Tracking:** Precisely records the current source `line` and `col` to produce readable error diagnostics.
 //!
 //! # Special Specific LEXOR Rules:
 //! - Safely structurally ignores any inline user comments prefixed strictly with `%%`.
@@ -22,26 +23,48 @@ pub struct Lexer<'a> {
     // the input is our iterator over the characters of the source code.
     // Peekable so we can look ahead at the next character without losing information.
     input: Peekable<Chars<'a>>,
+    /// Current line number (1-indexed).
+    pub line: usize,
+    /// Current column number (1-indexed).
+    pub col: usize,
 }
 
 impl<'a> Lexer<'a> {
-    // basically breaks down a string and converts it to a struct of a char list iterator that is peekable yes
+    /// Creates a new Lexer from a source string, starting at line 1, col 1.
     pub fn new(input: &'a str) -> Self {
         Self {
             input: input.chars().peekable(),
+            line: 1,
+            col: 1,
         }
     }
 
-    // peek next char, if at the end return null char
+    /// Peek at the next character without consuming it.
     fn peek_char(&mut self) -> char {
         *self.input.peek().unwrap_or(&'\0')
     }
 
-    // skip space and tabs only
+    /// Advance by one character, updating line/col tracking.
+    fn advance(&mut self) -> Option<char> {
+        let ch = self.input.next();
+        match ch {
+            Some('\n') => {
+                self.line += 1;
+                self.col = 1;
+            }
+            Some(_) => {
+                self.col += 1;
+            }
+            None => {}
+        }
+        ch
+    }
+
+    /// Skip spaces and tabs only (not newlines — they are significant tokens).
     fn skip_whitespace(&mut self) {
         while let Some(&ch) = self.input.peek() {
             if ch == ' ' || ch == '\t' || ch == '\r' {
-                self.input.next();
+                self.advance();
             } else {
                 break;
             }
@@ -53,15 +76,15 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
 
         // read the next character. if None, we are at End of File.
-        let ch = self.input.next()?;
+        let ch = self.advance()?;
 
         match ch {
             // Terminations & Print Symbols
             '\n' => Some(Token::Newline),
             '\r' => {
-                // windows \r\n
+                // windows \r\n — advance already counted \r, skip \n manually
                 if self.peek_char() == '\n' {
-                    self.input.next();
+                    self.advance();
                 }
                 Some(Token::Newline)
             }
@@ -93,7 +116,7 @@ impl<'a> Lexer<'a> {
             // = -> assign or equal ==
             '=' => {
                 if self.peek_char() == '=' {
-                    self.input.next();
+                    self.advance();
                     Some(Token::Eq)
                 } else {
                     Some(Token::Assign)
@@ -103,11 +126,11 @@ impl<'a> Lexer<'a> {
             // < -> less than, less than or equal to <=, or not equal to <>
             '<' => match self.peek_char() {
                 '=' => {
-                    self.input.next();
+                    self.advance();
                     Some(Token::Lte)
                 }
                 '>' => {
-                    self.input.next();
+                    self.advance();
                     Some(Token::Neq)
                 }
                 _ => Some(Token::Lt),
@@ -116,7 +139,7 @@ impl<'a> Lexer<'a> {
             // > -> greater than or greater than or equal to >=
             '>' => {
                 if self.peek_char() == '=' {
-                    self.input.next();
+                    self.advance();
                     Some(Token::Gte)
                 } else {
                     Some(Token::Gt)
@@ -139,26 +162,25 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    // Helper functions
-    // Eat comments starting with %% until the end of line
+    /// Eat comments starting with `%%` until end of line.
     fn consume_comment(&mut self) {
-        self.input.next(); // Eat second %
+        self.advance(); // Eat second %
         while let Some(&ch) = self.input.peek() {
             if ch == '\n' || ch == '\r' {
                 break;
             }
-            self.input.next();
+            self.advance();
         }
     }
 
-    // Handle [] escape codes
+    /// Handle `[...]` escape codes for special characters.
     fn read_escape_sequence(&mut self) -> Option<Token> {
         let mut content = String::new();
-        while let Some(ch) = self.input.next() {
+        while let Some(ch) = self.advance() {
             content.push(ch);
             if content == "]" {
                 if self.peek_char() == ']' {
-                    self.input.next(); // Consume the closing ']'
+                    self.advance(); // Consume the closing ']'
                     break;
                 }
             } else if ch == ']' {
@@ -174,13 +196,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    // Handle Words: Check against ALL CAPS keywords
+    /// Handle identifiers and keywords (all-caps keywords, lowercase identifiers).
     fn read_identifier(&mut self, first: char) -> Token {
         let mut ident = String::new();
         ident.push(first);
         while let Some(&ch) = self.input.peek() {
             if ch.is_alphanumeric() || ch == '_' {
-                ident.push(self.input.next().unwrap());
+                ident.push(self.advance().unwrap());
             } else {
                 break;
             }
@@ -211,7 +233,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    // check if int or float
+    /// Parses an integer or float literal token.
     fn read_number(&mut self, first: char) -> Token {
         let mut num_str = String::new();
         num_str.push(first);
@@ -219,13 +241,13 @@ impl<'a> Lexer<'a> {
 
         while let Some(&ch) = self.input.peek() {
             if ch.is_ascii_digit() {
-                num_str.push(self.input.next().unwrap());
+                num_str.push(self.advance().unwrap());
             } else if ch == '.' {
                 if has_decimal {
                     break;
                 }
                 has_decimal = true;
-                num_str.push(self.input.next().unwrap());
+                num_str.push(self.advance().unwrap());
             } else {
                 break;
             }
@@ -238,10 +260,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    // Handle "strings"
+    /// Parses a `"string"` literal.
     fn read_string(&mut self) -> Option<Token> {
         let mut s = String::new();
-        while let Some(ch) = self.input.next() {
+        while let Some(ch) = self.advance() {
             if ch == '"' {
                 break;
             }
@@ -250,11 +272,11 @@ impl<'a> Lexer<'a> {
         Some(Token::StringLit(s))
     }
 
-    // Handle 'char'
+    /// Parses a `'c'` character literal.
     fn read_char_literal(&mut self) -> Option<Token> {
-        let ch = self.input.next()?;
+        let ch = self.advance()?;
         if self.peek_char() == '\'' {
-            self.input.next();
+            self.advance();
         }
         Some(Token::CharLit(ch))
     }

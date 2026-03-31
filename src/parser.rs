@@ -44,24 +44,35 @@ pub struct Parser<'a> {
     current_token: Option<Token>,
     peek_token: Option<Token>,
     pub errors: Vec<String>,
+    /// Source line where the current token begins (1-indexed).
+    pub current_line: usize,
+    /// Source column where the current token begins (1-indexed).
+    pub current_col: usize,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(mut lexer: Lexer<'a>) -> Self {
         let current_token = lexer.next();
         let peek_token = lexer.next();
+        let current_line = lexer.line;
+        let current_col = lexer.col;
 
         Parser {
             lexer,
             current_token,
             peek_token,
             errors: Vec::new(),
+            current_line,
+            current_col,
         }
     }
 
     pub fn next_token(&mut self) {
         self.current_token = self.peek_token.take();
         self.peek_token = self.lexer.next();
+        // Snapshot the position after the token was consumed
+        self.current_line = self.lexer.line;
+        self.current_col = self.lexer.col;
     }
 
     pub fn current_precedence(&self) -> u8 {
@@ -80,6 +91,12 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Push an error message prefixed with the current source position.
+    fn push_error(&mut self, msg: String) {
+        let tagged = format!("[{}:{}] {}", self.current_line, self.current_col, msg);
+        self.errors.push(tagged);
+    }
+
     pub fn expect_peek(&mut self, token: Token) -> bool {
         if let Some(t) = &self.peek_token {
             if *t == token {
@@ -87,7 +104,7 @@ impl<'a> Parser<'a> {
                 return true;
             }
         }
-        self.errors.push(format!(
+        self.push_error(format!(
             "Expected next token to be {:?}, got {:?}",
             token, self.peek_token
         ));
