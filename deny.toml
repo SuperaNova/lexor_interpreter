@@ -51,9 +51,3 @@ skip = []
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-
-[[licenses.clarify]]
-name = "lexor_interpreter"
-version = "0.1.0"
-expression = "NONE"
-license-files = []
