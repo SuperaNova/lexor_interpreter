@@ -3,21 +3,32 @@
 //! This module natively boots the Lexer, Parser, and Evaluator instances, linking them
 //! cleanly sequentially into a single unified execution pipeline.
 
-pub mod ast;
-pub mod environment;
-pub mod evaluator;
-pub mod lexer;
-pub mod object;
-pub mod parser;
-pub mod tokens;
-
-use environment::Environment;
-use evaluator::eval_program;
-use lexer::Lexer;
-use parser::Parser;
+use lexor_core::environment::{Environment, EnvironmentIO};
+use lexor_core::evaluator::eval_program;
+use lexor_core::lexer::Lexer;
+use lexor_core::object::Object;
+use lexor_core::parser::Parser;
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 use std::process;
+
+struct TerminalIO;
+
+impl EnvironmentIO for TerminalIO {
+    fn read_line(&mut self) -> String {
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to cleanly read terminal line input");
+        input
+    }
+
+    fn print(&mut self, text: &str) {
+        print!("{}", text);
+        io::stdout().flush().unwrap(); // Flush strictly ensures immediate render
+    }
+}
 
 fn main() {
     // 1. Gather command line arguments ensuring a `.lexor` file was explicitly provided
@@ -50,9 +61,10 @@ fn main() {
                 }
             } else {
                 let mut env = Environment::new();
-                let result = eval_program(&program, &mut env);
+                let mut io = TerminalIO;
+                let result = eval_program(&program, &mut env, &mut io);
 
-                if let Some(object::Object::Error(msg)) = result {
+                if let Some(Object::Error(msg)) = result {
                     println!("\n--- FATAL RUNTIME ERROR ---");
                     println!("{}", msg);
                 } else {

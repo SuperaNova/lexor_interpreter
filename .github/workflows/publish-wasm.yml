@@ -1,0 +1,55 @@
+name: Publish WebAssembly
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (do not publish package)'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  publish-wasm:
+    name: Build and Publish Wasm to GitHub Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@superanova'
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build WebAssembly Package
+        working-directory: ./wasm
+        run: wasm-pack build --scope superanova --target web
+
+      - name: Publish to GitHub Packages
+        working-directory: ./wasm/pkg
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
