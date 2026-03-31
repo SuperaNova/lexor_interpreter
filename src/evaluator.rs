@@ -6,7 +6,7 @@
 //! 1. **Tree Traversal:** Structurally unwraps nested AST Enums recursively passing universal scalable runtime `Object` values securely.
 //! 2. **State Delegation:** Retrieves explicitly and persists user-defined memory values tightly natively into the integrated RAM `Environment`.
 //! 3. **Real-World Side Effects:** Computes math equations natively securely triggering CLI output rendering sequentially.
-//! 
+//!
 //! # Special LEXOR Execution Rules:
 //! - `IF` conditions uniquely interpret generic Objects identically targeting strictly non-zero integers, or explicitly flagged `TRUE` booleans safely.
 //! - Instantly structures and safely recursively bubbles exact `Object::Error` variants explicitly terminating executions purely if a math/type violation universally occurs.

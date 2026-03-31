@@ -1,7 +1,7 @@
 //! The LEXOR Scanner (Lexical Analyzer).
 //!
 //! The Lexer (Tokenizer) is the critical first step of the interpreter.
-//! It takes the raw source code text (e.g., "DECLARE INT x") and lazily 
+//! It takes the raw source code text (e.g., "DECLARE INT x") and lazily
 //! breaks it tightly into categorized `Tokens` utilizing a standard Rust Iterator pattern.
 //!
 //! # Core Responsibilities
