@@ -1,0 +1,49 @@
+# Labels applied based on file paths changed in a PR.
+# Docs: https://github.com/actions/labeler
+
+lexer:
+  - changed-files:
+    - any-glob-to-any-file: 'src/lexer.rs'
+
+parser:
+  - changed-files:
+    - any-glob-to-any-file: 'src/parser.rs'
+
+ast:
+  - changed-files:
+    - any-glob-to-any-file: 'src/ast.rs'
+
+evaluator:
+  - changed-files:
+    - any-glob-to-any-file: 'src/evaluator.rs'
+
+runtime:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/environment.rs'
+      - 'src/object.rs'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docs/**'
+      - '*.md'
+      - '.github/**/*.md'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file: '.github/**'
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file: 'src/**/*test*.rs'
+
+samples:
+  - changed-files:
+    - any-glob-to-any-file: 'samples/**'

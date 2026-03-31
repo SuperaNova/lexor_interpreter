@@ -1,4 +1,4 @@
-# LEXOR Programming Language Engine 🚀
+# LEXOR Programming Language Engine
 
 A perfectly crafted tree-walking evaluation macro language and execution engine built entirely in modern, idiomatic Rust. It parses source files safely and dynamically structures them into powerful Abstract Syntax Trees.
 
