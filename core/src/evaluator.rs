@@ -295,19 +295,18 @@ fn eval_infix_expression(
         return Some(Object::String(format!("{}{}", left, right)));
     }
 
-    if *operator == Token::And
+    if (*operator == Token::And
         || *operator == Token::Or
         || *operator == Token::Eq
-        || *operator == Token::Neq
+        || *operator == Token::Neq)
+        && let (Object::Boolean(l), Object::Boolean(r)) = (&left, &right)
     {
-        if let (Object::Boolean(l), Object::Boolean(r)) = (&left, &right) {
-            match operator {
-                Token::And => return Some(Object::Boolean(*l && *r)),
-                Token::Or => return Some(Object::Boolean(*l || *r)),
-                Token::Eq => return Some(Object::Boolean(l == r)),
-                Token::Neq => return Some(Object::Boolean(l != r)),
-                _ => {}
-            }
+        match operator {
+            Token::And => return Some(Object::Boolean(*l && *r)),
+            Token::Or => return Some(Object::Boolean(*l || *r)),
+            Token::Eq => return Some(Object::Boolean(l == r)),
+            Token::Neq => return Some(Object::Boolean(l != r)),
+            _ => {}
         }
     }
 

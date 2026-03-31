@@ -98,11 +98,11 @@ impl<'a> Parser<'a> {
     }
 
     pub fn expect_peek(&mut self, token: Token) -> bool {
-        if let Some(t) = &self.peek_token {
-            if *t == token {
-                self.next_token();
-                return true;
-            }
+        if let Some(t) = &self.peek_token
+            && *t == token
+        {
+            self.next_token();
+            return true;
         }
         self.push_error(format!(
             "Expected next token to be {:?}, got {:?}",
@@ -251,11 +251,10 @@ impl<'a> Parser<'a> {
 
         while self.current_token.is_some() {
             // Check for END SCRIPT
-            if let Some(Token::End) = self.current_token {
-                if let Some(Token::Script) = self.peek_token {
-                    self.next_token(); // consume Script
-                    break;
-                }
+            if let (Some(Token::End), Some(Token::Script)) = (&self.current_token, &self.peek_token)
+            {
+                self.next_token(); // consume Script
+                break;
             }
 
             if let Some(Token::Newline) = self.current_token {
@@ -311,7 +310,8 @@ impl<'a> Parser<'a> {
             let var_name = if let Some(Token::Identifier(name)) = &self.current_token {
                 name.clone()
             } else {
-                self.errors.push(format!("Expected identifier in DECLARE"));
+                self.errors
+                    .push("Expected identifier in DECLARE".to_string());
                 return None;
             };
 
@@ -343,7 +343,7 @@ impl<'a> Parser<'a> {
         if let Some(Token::Colon) = self.current_token {
             self.next_token(); // consume Colon
         } else {
-            self.errors.push(format!("Expected ':' after PRINT"));
+            self.errors.push("Expected ':' after PRINT".to_string());
             return None;
         }
 
@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
         if let Some(Token::Colon) = self.current_token {
             self.next_token(); // consume Colon
         } else {
-            self.errors.push(format!("Expected ':' after SCAN"));
+            self.errors.push("Expected ':' after SCAN".to_string());
             return None;
         }
 
@@ -369,7 +369,7 @@ impl<'a> Parser<'a> {
                 vars.push(name.clone());
                 self.next_token();
             } else {
-                self.errors.push(format!("Expected identifier in SCAN"));
+                self.errors.push("Expected identifier in SCAN".to_string());
                 return None;
             }
 
