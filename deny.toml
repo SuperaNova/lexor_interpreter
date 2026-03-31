@@ -19,11 +19,11 @@ ignore = []
 allow = [
     "MIT",
     "Apache-2.0",
-    # "Apache-2.0 WITH LLVM-exception", # remove: not encountered, triggers warning
     "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "Unlicense",
     "CC0-1.0",
     "Zlib",
