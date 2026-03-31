@@ -1,15 +1,18 @@
-/*
- * * The Lexer (Tokenizer) is the first step of the interpreter.
- * It takes the raw source code text (e.g., "DECLARE INT x") and breaks it into tokens.
- * * Its main jobs are:
- * 1. Read the text character by character.
- * 2. Group characters into words (Keywords or Identifiers).
- * 3. Recognize numbers (Ints vs Floats).
- * 4. Handle special LEXOR rules:
- * - Ignore comments starting with %%
- * - Treat $ as the "End of Line" token (not just whitespace).
- * - Handle escape codes inside [ ] brackets.
- */
+//! The LEXOR Scanner (Lexical Analyzer).
+//!
+//! The Lexer (Tokenizer) is the critical first step of the interpreter.
+//! It takes the raw source code text (e.g., "DECLARE INT x") and lazily 
+//! breaks it tightly into categorized `Tokens` utilizing a standard Rust Iterator pattern.
+//!
+//! # Core Responsibilities
+//! 1. **Character Consumption:** Reads the text character by character iteratively matching Lexor grammar.
+//! 2. **Categorization:** Groups arbitrary characters accurately into structural `Keywords` or `Identifiers`.
+//! 3. **Type Recognition:** Distinguishes purely typed numeric variables natively (`Int` vs `Float`).
+//!
+//! # Special Specific LEXOR Rules:
+//! - Safely structurally ignores any inline user comments prefixed strictly with `%%`.
+//! - Identifies `$` accurately as the string evaluation delimiting token.
+//! - Effortlessly parses custom code escape characters shielded inside `[ ]` brackets.
 
 use crate::tokens::Token;
 use std::iter::Peekable;
@@ -37,7 +40,7 @@ impl<'a> Lexer<'a> {
     // skip space and tabs only
     fn skip_whitespace(&mut self) {
         while let Some(&ch) = self.input.peek() {
-            if ch == ' ' || ch == '\t' {
+            if ch == ' ' || ch == '\t' || ch == '\r' {
                 self.input.next();
             } else {
                 break;
@@ -66,6 +69,7 @@ impl<'a> Lexer<'a> {
 
             // Simple Operators
             ',' => Some(Token::Comma),
+            ':' => Some(Token::Colon),
             '(' => Some(Token::LParen),
             ')' => Some(Token::RParen),
             '+' => Some(Token::Plus),
@@ -151,10 +155,16 @@ impl<'a> Lexer<'a> {
     fn read_escape_sequence(&mut self) -> Option<Token> {
         let mut content = String::new();
         while let Some(ch) = self.input.next() {
-            if ch == ']' {
+            content.push(ch);
+            if content == "]" {
+                if self.peek_char() == ']' {
+                    self.input.next(); // Consume the closing ']'
+                    break;
+                }
+            } else if ch == ']' {
+                content.pop(); // Remove the closing ']'
                 break;
             }
-            content.push(ch);
         }
         match content.as_str() {
             "#" => Some(Token::CharLit('#')), // [#]
@@ -247,5 +257,131 @@ impl<'a> Lexer<'a> {
             self.input.next();
         }
         Some(Token::CharLit(ch))
+    }
+}
+
+// Emulate an iterator for the Lexer so we can easily loop over tokens
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_token()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn lex(input: &str) -> Vec<Token> {
+        Lexer::new(input).collect()
+    }
+
+    #[test]
+    fn test_keywords_and_types() {
+        let input =
+            "DECLARE PRINT SCAN IF ELSE FOR REPEAT WHEN START END SCRIPT AREA INT CHAR BOOL FLOAT";
+        let expected = vec![
+            Token::Declare,
+            Token::Print,
+            Token::Scan,
+            Token::If,
+            Token::Else,
+            Token::For,
+            Token::Repeat,
+            Token::When,
+            Token::Start,
+            Token::End,
+            Token::Script,
+            Token::Area,
+            Token::TypeInt,
+            Token::TypeChar,
+            Token::TypeBool,
+            Token::TypeFloat,
+        ];
+        assert_eq!(lex(input), expected);
+    }
+
+    #[test]
+    fn test_operators() {
+        let input = "+ - * / % == <> < > <= >= & = AND OR NOT :";
+        let expected = vec![
+            Token::Plus,
+            Token::Minus,
+            Token::Star,
+            Token::Slash,
+            Token::Modulo,
+            Token::Eq,
+            Token::Neq,
+            Token::Lt,
+            Token::Gt,
+            Token::Lte,
+            Token::Gte,
+            Token::Concat,
+            Token::Assign,
+            Token::And,
+            Token::Or,
+            Token::Not,
+            Token::Colon,
+        ];
+        assert_eq!(lex(input), expected);
+    }
+
+    #[test]
+    fn test_literals() {
+        let input = "123 3.14 TRUE FALSE 'a' \"hello world\" my_var";
+        let expected = vec![
+            Token::IntLit(123),
+            Token::FloatLit(3.14),
+            Token::BoolLit(true),
+            Token::BoolLit(false),
+            Token::CharLit('a'),
+            Token::StringLit("hello world".to_string()),
+            Token::Identifier("my_var".to_string()),
+        ];
+        assert_eq!(lex(input), expected);
+    }
+
+    #[test]
+    fn test_escape_sequences() {
+        let input = "[#] [[] []]";
+        let expected = vec![
+            Token::CharLit('#'),
+            Token::CharLit('['),
+            Token::CharLit(']'),
+        ];
+        assert_eq!(lex(input), expected);
+    }
+
+    #[test]
+    fn test_structure_and_comments() {
+        let input = "DECLARE INT x = 10 %%\n$\n";
+        let expected = vec![
+            Token::Declare,
+            Token::TypeInt,
+            Token::Identifier("x".to_string()),
+            Token::Assign,
+            Token::IntLit(10),
+            Token::Newline,
+            Token::Dollar,
+            Token::Newline,
+        ];
+        assert_eq!(lex(input), expected);
+    }
+
+    #[test]
+    fn test_illegal_characters_and_edges() {
+        let input = "DECLARE ^ x = @";
+        let expected = vec![
+            Token::Declare,
+            Token::Illegal("^".to_string()),
+            Token::Identifier("x".to_string()),
+            Token::Assign,
+            Token::Illegal("@".to_string()),
+        ];
+        assert_eq!(lex(input), expected);
+
+        let empty_input = "   \t   ";
+        assert_eq!(lex(empty_input), vec![]);
     }
 }

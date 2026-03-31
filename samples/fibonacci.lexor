@@ -1,0 +1,27 @@
+SCRIPT AREA
+START SCRIPT
+    %% LEXOR Sample Program: Fibonacci Sequence Calculator
+    
+    PRINT: "--- Fibonacci Sequence ---" & $
+    
+    DECLARE INT a = 0
+    DECLARE INT b = 1
+    DECLARE INT temp = 0
+    
+    PRINT: "Term 1: " & a & $
+    PRINT: "Term 2: " & b & $
+    
+    DECLARE INT count = 3
+    
+    REPEAT WHEN (count <= 15)
+    START REPEAT
+        temp = a + b
+        PRINT: "Term " & count & ": " & temp & $
+        
+        a = b
+        b = temp
+        count = count + 1
+    END REPEAT
+    
+    PRINT: "--- Done! ---" & $
+END SCRIPT
