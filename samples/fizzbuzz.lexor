@@ -1,0 +1,29 @@
+START SCRIPT
+    %% FizzBuzz Implementation in LEXOR
+    DECLARE INT count = 1
+    DECLARE INT limit = 15
+
+    PRINT "Starting FizzBuzz up to " & limit
+
+    FOR (count = 1, count <= limit, count = count + 1)
+    START FOR
+        IF (count % 3 == 0 AND count % 5 == 0)
+        START IF
+            PRINT "FizzBuzz"
+        END IF
+        ELSE IF (count % 3 == 0)
+        START IF
+            PRINT "Fizz"
+        END IF
+        ELSE IF (count % 5 == 0)
+        START IF
+            PRINT "Buzz"
+        END IF
+        ELSE
+        START IF
+            PRINT count
+        END IF
+    END FOR
+
+    PRINT "Finished FizzBuzz!"
+END SCRIPT
