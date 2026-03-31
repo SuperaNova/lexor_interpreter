@@ -75,6 +75,7 @@ pub enum Token {
     Newline, // Represents the actual end of a line of code (\n)
     Dollar,  // $ (Used in PRINT for outputting a new line)
     Comma,   // ,
+    Colon,   // : (Required after PRINT and SCAN)
     LParen,  // (
     RParen,  // )
 

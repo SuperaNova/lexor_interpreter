@@ -66,6 +66,7 @@ impl<'a> Lexer<'a> {
 
             // Simple Operators
             ',' => Some(Token::Comma),
+            ':' => Some(Token::Colon),
             '(' => Some(Token::LParen),
             ')' => Some(Token::RParen),
             '+' => Some(Token::Plus),
@@ -286,11 +287,12 @@ mod tests {
 
     #[test]
     fn test_operators() {
-        let input = "+ - * / % == <> < > <= >= & = AND OR NOT";
+        let input = "+ - * / % == <> < > <= >= & = AND OR NOT :";
         let expected = vec![
             Token::Plus, Token::Minus, Token::Star, Token::Slash, Token::Modulo,
             Token::Eq, Token::Neq, Token::Lt, Token::Gt, Token::Lte, Token::Gte,
             Token::Concat, Token::Assign, Token::And, Token::Or, Token::Not,
+            Token::Colon,
         ];
         assert_eq!(lex(input), expected);
     }
