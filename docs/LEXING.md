@@ -1,16 +1,16 @@
 # LEXOR Lexical Analysis (Scanner)
 
-The foundation of the interpreter begins in `src/lexer.rs`. Before the Parser can understand the logic or structure of the code, we must convert the raw text (characters) into categorized, manageable pieces called **Tokens**. This process is known as Lexical Analysis or Scanning.
+The foundation of the interpreter begins in `core/src/lexer.rs`. Before the Parser can understand the logic or structure of the code, we must convert the raw text (characters) into categorized, manageable pieces called **Tokens**. This process is known as Lexical Analysis or Scanning.
 
-## The Vocabulary (`src/tokens.rs`)
-The `Token` enum in `src/tokens.rs` acts as the complete dictionary for the LEXOR language. 
+## The Vocabulary (`core/src/tokens.rs`)
+The `Token` enum in `core/src/tokens.rs` acts as the complete dictionary for the LEXOR language. 
 - **Keywords:** `DECLARE`, `PRINT`, `IF`, `FOR`, `START`, `END`
 - **Types:** `INT`, `FLOAT`, `BOOL`, `CHAR`
 - **Operators:** `+`, `-`, `*`, `==`, `&`, `=`
 - **Literals:** `IntLit(42)`, `Identifier("area")`
 - **Symbols:** `Comma`, `Colon`, `Newline`, `Dollar`
 
-## The Lexer Engine (`src/lexer.rs`)
+## The Lexer Engine (`core/src/lexer.rs`)
 The `Lexer` struct wraps the source code and iterates over a `Peekable` stream of characters.
 
 ### Core Mechanics
@@ -21,6 +21,6 @@ The `Lexer` struct wraps the source code and iterates over a `Peekable` stream o
 
 ### Extending the Language
 If you ever want to add a completely new structural word to the language (for example, a `WHILE` loop):
-1. Add a `While` definition to the `Token` enum in `src/tokens.rs`.
-2. Open `src/lexer.rs` and add `"WHILE" => Token::While` into the `match ident.as_str()` switch block inside the `read_identifier` function.
+1. Add a `While` definition to the `Token` enum in `core/src/tokens.rs`.
+2. Add `"WHILE" => Token::While` into the `match ident.as_str()` switch block inside the `read_identifier` function in `core/src/lexer.rs`.
 And the Lexer will automatically begin tagging those words for the Parser!

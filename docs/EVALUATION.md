@@ -1,6 +1,6 @@
 # LEXOR Evaluator
 
-The Evaluator is responsible for executing the structured AST produced by the parser. The logic is defined in `src/evaluator.rs`.
+The Evaluator is responsible for executing the structured AST produced by the parser. The logic is strictly isolated from standard Input/Output inside `core/src/evaluator.rs`.
 
 ## Runtime Objects (`object.rs`)
 The Evaluator uses the `Object` enum to represent variables dynamically during runtime.
@@ -13,5 +13,5 @@ Variables initialized with `DECLARE` are actively stored in the `Environment` st
 ## Tree-Walking Execution (`evaluator.rs`)
 The `eval_program()` function walks through the AST nodes sequentially:
 - Math operations are cleanly evaluated against standard Rust types.
-- `PRINT` statements utilize the formatting traits of the `Object` enum to output text directly to standard output.
+- `PRINT` and `SCAN` statements utilize an injected `EnvironmentIO` trait to communicate with the outside world (like a Terminal or Web Browser) without natively blocking threads or forcing standard Output.
 - `IF`, `FOR`, and `REPEAT WHEN` statements evaluate their inner conditional expressions dynamically to control loop execution blocks.

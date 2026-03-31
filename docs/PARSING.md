@@ -1,6 +1,6 @@
 # LEXOR Parsing Engines
 
-Because parsing raw text into executable logic is complex, `src/parser.rs` uses two distinct industry-standard parsing algorithms layered together:
+Because parsing raw text into executable logic is complex, `core/src/parser.rs` uses two distinct industry-standard parsing algorithms layered together:
 
 ## Top-Down Recursive Descent (Statement Parsing)
 Used heavily for parsing structural blocks like `IF`, `FOR`, `REPEAT WHEN`, and `DECLARE` statements.
@@ -16,7 +16,7 @@ Used exclusively to parse expressions (like `5 * 10 + 2` or `x = y = 4`) and mat
 
 ### Extending the Language
 If you ever need to add a newly invented Operator to the LEXOR language:
-1. Add the token symbol to `Lexer.rs`.
+1. Add the token symbol to `lexer.rs`.
 2. Add the operator to the `get_precedence` lookup table inside `parser.rs`.
 3. Add it to `is_infix` inside the parser.
 And the Pratt parsing engine will automatically begin building perfect mathematically-sorted ASTs for it without you manually writing a single line of logical checks!
