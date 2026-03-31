@@ -321,13 +321,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_if_statement(&mut self) -> Option<Statement> {
-        self.next_token(); // consume IF
-        
         if !self.expect_peek(Token::LParen) { return None; }
         
         let condition = self.parse_expression(PREC_LOWEST)?;
-        
-        if !self.expect_peek(Token::RParen) { return None; }
+        self.next_token(); // step past `)`
         self.skip_newlines();
 
         if self.current_token != Some(Token::Start) {
@@ -340,7 +337,7 @@ impl<'a> Parser<'a> {
         self.skip_newlines();
 
         let mut consequence = Vec::new();
-        while self.current_token.is_some() && self.current_token != Some(Token::End) && self.current_token != Some(Token::Else) {
+        while self.current_token.is_some() && self.current_token != Some(Token::End) {
             if let Some(Token::Newline) = self.current_token {
                 self.next_token();
                 continue;
@@ -352,7 +349,13 @@ impl<'a> Parser<'a> {
             }
         }
 
+        if self.current_token != Some(Token::End) { return None; }
+        self.next_token(); // consume END
+        if self.current_token != Some(Token::If) { return None; }
+        self.next_token(); // consume IF
+
         let mut alternative = None;
+        self.skip_newlines();
 
         if let Some(Token::Else) = self.current_token {
             self.next_token(); // consume ELSE
@@ -391,10 +394,6 @@ impl<'a> Parser<'a> {
                 if self.current_token != Some(Token::If) { return None; }
                 self.next_token(); // consume If
             }
-        } else if let Some(Token::End) = self.current_token {
-            self.next_token(); // consume END
-            if self.current_token != Some(Token::If) { return None; }
-            self.next_token(); // consume IF
         }
 
         Some(Statement::If {
@@ -405,8 +404,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_for_statement(&mut self) -> Option<Statement> {
-        self.next_token(); // consume FOR
         if !self.expect_peek(Token::LParen) { return None; }
+        self.next_token(); // step firmly cleanly past the `(` so expression inside handles it
 
         let initialization = Box::new(self.parse_statement()?);
         if self.current_token != Some(Token::Comma) { 
@@ -416,11 +415,16 @@ impl<'a> Parser<'a> {
         self.next_token(); // consume comma
 
         let condition = self.parse_expression(PREC_LOWEST)?;
-        if !self.expect_peek(Token::Comma) { return None; }
+        self.next_token(); // step identically past condition 
+        if self.current_token != Some(Token::Comma) { 
+            self.errors.push(format!("Expected ',' after condition in FOR, got {:?}", self.current_token));
+            return None; 
+        }
+        self.next_token(); // consume comma
 
         let update = Box::new(self.parse_statement()?);
         if self.current_token != Some(Token::RParen) { 
-            self.errors.push("Expected ')' to close FOR".to_string());
+            self.errors.push(format!("Expected ')' to close FOR, got {:?}", self.current_token));
             return None; 
         }
         self.next_token(); // consume RParen
@@ -459,13 +463,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_repeat_when_statement(&mut self) -> Option<Statement> {
-        self.next_token(); // consume REPEAT
-        if self.current_token != Some(Token::When) { return None; }
-        self.next_token(); // consume WHEN
-        
+        if !self.expect_peek(Token::When) { return None; }
         if !self.expect_peek(Token::LParen) { return None; }
+        
         let condition = self.parse_expression(PREC_LOWEST)?;
-        if !self.expect_peek(Token::RParen) { return None; }
+        self.next_token(); // cleanly step past `)`
         
         self.skip_newlines();
 

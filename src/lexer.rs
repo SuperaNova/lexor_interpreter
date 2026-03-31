@@ -37,7 +37,7 @@ impl<'a> Lexer<'a> {
     // skip space and tabs only
     fn skip_whitespace(&mut self) {
         while let Some(&ch) = self.input.peek() {
-            if ch == ' ' || ch == '\t' {
+            if ch == ' ' || ch == '\t' || ch == '\r' {
                 self.input.next();
             } else {
                 break;
