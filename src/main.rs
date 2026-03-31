@@ -1,6 +1,6 @@
 //! The LEXOR Interpreter CLI Core.
 //!
-//! This module natively boots the Lexer, Parser, and Evaluator instances, linking them 
+//! This module natively boots the Lexer, Parser, and Evaluator instances, linking them
 //! cleanly sequentially into a single unified execution pipeline.
 
 pub mod ast;

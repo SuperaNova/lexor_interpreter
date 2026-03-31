@@ -1,7 +1,7 @@
 //! The LEXOR Abstract Syntax Tree (AST).
 //!
-//! This module contains the strictly typed Enums and Structs that securely represent the 
-//! nested hierarchical structure of parsed code. The Parser functionally constructs these nodes, 
+//! This module contains the strictly typed Enums and Structs that securely represent the
+//! nested hierarchical structure of parsed code. The Parser functionally constructs these nodes,
 //! and the Evaluator naturally consumes them.
 
 use crate::tokens::Token;

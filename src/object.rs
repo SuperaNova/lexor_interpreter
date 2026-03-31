@@ -1,6 +1,6 @@
 //! The LEXOR Runtime Object System.
 //!
-//! This module defines the universal `Object` enum wrapper used to safely classify 
+//! This module defines the universal `Object` enum wrapper used to safely classify
 //! dynamic runtime values (like Ints, Floats, and Booleans) securely during active evaluation.
 
 use std::fmt;
