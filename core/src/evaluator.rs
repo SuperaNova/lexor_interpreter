@@ -17,7 +17,11 @@ use crate::environment::{Environment, EnvironmentIO};
 use crate::object::Object;
 use crate::tokens::Token;
 
-pub fn eval_program(program: &Program, env: &mut Environment, io: &mut dyn EnvironmentIO) -> Option<Object> {
+pub fn eval_program(
+    program: &Program,
+    env: &mut Environment,
+    io: &mut dyn EnvironmentIO,
+) -> Option<Object> {
     let mut result = None;
 
     for statement in &program.statements {
@@ -31,7 +35,11 @@ pub fn eval_program(program: &Program, env: &mut Environment, io: &mut dyn Envir
     result
 }
 
-fn eval_block_statement(statements: &Vec<Statement>, env: &mut Environment, io: &mut dyn EnvironmentIO) -> Option<Object> {
+fn eval_block_statement(
+    statements: &Vec<Statement>,
+    env: &mut Environment,
+    io: &mut dyn EnvironmentIO,
+) -> Option<Object> {
     let mut result = None;
 
     for statement in statements {
@@ -45,7 +53,11 @@ fn eval_block_statement(statements: &Vec<Statement>, env: &mut Environment, io: 
     result.or(Some(Object::Null))
 }
 
-fn eval_statement(statement: &Statement, env: &mut Environment, io: &mut dyn EnvironmentIO) -> Option<Object> {
+fn eval_statement(
+    statement: &Statement,
+    env: &mut Environment,
+    io: &mut dyn EnvironmentIO,
+) -> Option<Object> {
     match statement {
         Statement::Expression(expr) => eval_expression(expr, env),
 
@@ -399,7 +411,9 @@ mod tests {
 
     struct MockIO;
     impl EnvironmentIO for MockIO {
-        fn read_line(&mut self) -> String { String::new() }
+        fn read_line(&mut self) -> String {
+            String::new()
+        }
         fn print(&mut self, _text: &str) {}
     }
 

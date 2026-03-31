@@ -35,16 +35,25 @@ Injects Mock inputs and strings capturing to securely run `core` in web browsers
 - **RAM Environment State:** Employs standard Rust HashMaps linking assignments indefinitely securely over runtime iteration states identically to modern scripting languages.
 
 ## Developer Utilities & Local Checking
-To securely check code locally before pushing to prevent messy CI/CD failures (like Cargo Deny license rejections or Test panic tracebacks), run this quick check locally:
+To securely check code locally before pushing to prevent messy CI/CD failures (like Cargo Deny license rejections or Test panic tracebacks), we've bundled convenient cross-platform wrapper scripts!
 
-```bash
-# 1. Run all tests locally across the entire workspace
-cargo test --workspace
+Simply run one of the following commands depending on your operating system:
 
-# 2. Assert no vulnerable dependencies or banned licenses locally
-# (Note: Requires installing `cargo-deny` first: `cargo install --locked cargo-deny`)
-cargo deny check
+**Windows PowerShell:**
+```powershell
+.\scripts\check.ps1
 ```
 
+**Windows Command Prompt:**
+```bat
+.\scripts\check.bat
+```
+
+**Linux / macOS:**
+```bash
+./scripts/check.sh
+```
+
+*(Note: Building and scanning natively requires installing `cargo-deny` first: `cargo install --locked cargo-deny`)*
 ## Architecture & Maintenance
 See the `docs/` folder for deeply structural documentation concerning exactly how `lexer.rs` behaves, and uniquely how the `parser.rs` Pratt Algorithm tokenizes precedence correctly over expressions!
