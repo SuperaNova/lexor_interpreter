@@ -5,6 +5,7 @@ cargo fmt --all
 
 Write-Host "`n--- 2. Running Lints ---" -ForegroundColor Cyan
 cargo clippy --workspace
+cargo clippy -p lexor_core -- -D warnings
 
 Write-Host "`n--- 3. Running Workspace Tests ---" -ForegroundColor Cyan
 cargo test --workspace

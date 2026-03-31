@@ -9,6 +9,8 @@ echo.
 echo --- 2. Running Lints ---
 cargo clippy --workspace
 if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
+cargo clippy -p lexor_core -- -D warnings
+if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
 
 echo.
 echo --- 3. Running Workspace Tests ---
