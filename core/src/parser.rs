@@ -257,13 +257,15 @@ impl<'a> Parser<'a> {
                 self.next_token();
                 continue;
             }
-            if let (Some(Token::Start), Some(Token::Script)) = (&self.current_token, &self.peek_token)
+            if let (Some(Token::Start), Some(Token::Script)) =
+                (&self.current_token, &self.peek_token)
             {
                 self.next_token();
                 self.next_token();
                 continue;
             }
-            if let (Some(Token::Script), Some(Token::Area)) = (&self.current_token, &self.peek_token)
+            if let (Some(Token::Script), Some(Token::Area)) =
+                (&self.current_token, &self.peek_token)
             {
                 self.next_token();
                 self.next_token();

@@ -68,15 +68,14 @@ fn eval_statement(
                     None => Object::Null,
                 };
 
-                if *var_type == Token::TypeBool {
-                    if let Object::String(ref s) = init_val {
+                if *var_type == Token::TypeBool
+                    && let Object::String(ref s) = init_val {
                         if s == "TRUE" {
                             init_val = Object::Boolean(true);
                         } else if s == "FALSE" {
                             init_val = Object::Boolean(false);
                         }
                     }
-                }
 
                 if let Err(msg) = check_type_match(var_type, &init_val) {
                     return Some(Object::Error(format!(
@@ -233,15 +232,14 @@ fn eval_expression(expression: &Expression, env: &mut Environment) -> Option<Obj
                 if let Expression::Identifier(name) = &**left {
                     let mut val = eval_expression(right, env)?;
                     if let Some(var_type) = env.get_type(name).cloned() {
-                        if var_type == Token::TypeBool {
-                            if let Object::String(ref s) = val {
+                        if var_type == Token::TypeBool
+                            && let Object::String(ref s) = val {
                                 if s == "TRUE" {
                                     val = Object::Boolean(true);
                                 } else if s == "FALSE" {
                                     val = Object::Boolean(false);
                                 }
                             }
-                        }
 
                         if let Err(msg) = check_type_match(&var_type, &val) {
                             return Some(Object::Error(format!(
@@ -511,7 +509,7 @@ START SCRIPT
 END SCRIPT
 ";
         assert_eq!(eval(input).unwrap(), Object::Boolean(true));
-        
+
         let input2 = "
 SCRIPT AREA
 START SCRIPT
