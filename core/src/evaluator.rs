@@ -69,13 +69,14 @@ fn eval_statement(
                 };
 
                 if *var_type == Token::TypeBool
-                    && let Object::String(ref s) = init_val {
-                        if s == "TRUE" {
-                            init_val = Object::Boolean(true);
-                        } else if s == "FALSE" {
-                            init_val = Object::Boolean(false);
-                        }
+                    && let Object::String(ref s) = init_val
+                {
+                    if s == "TRUE" {
+                        init_val = Object::Boolean(true);
+                    } else if s == "FALSE" {
+                        init_val = Object::Boolean(false);
                     }
+                }
 
                 if let Err(msg) = check_type_match(var_type, &init_val) {
                     return Some(Object::Error(format!(
@@ -233,13 +234,14 @@ fn eval_expression(expression: &Expression, env: &mut Environment) -> Option<Obj
                     let mut val = eval_expression(right, env)?;
                     if let Some(var_type) = env.get_type(name).cloned() {
                         if var_type == Token::TypeBool
-                            && let Object::String(ref s) = val {
-                                if s == "TRUE" {
-                                    val = Object::Boolean(true);
-                                } else if s == "FALSE" {
-                                    val = Object::Boolean(false);
-                                }
+                            && let Object::String(ref s) = val
+                        {
+                            if s == "TRUE" {
+                                val = Object::Boolean(true);
+                            } else if s == "FALSE" {
+                                val = Object::Boolean(false);
                             }
+                        }
 
                         if let Err(msg) = check_type_match(&var_type, &val) {
                             return Some(Object::Error(format!(
