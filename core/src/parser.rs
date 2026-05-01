@@ -250,11 +250,24 @@ impl<'a> Parser<'a> {
         self.skip_newlines();
 
         while self.current_token.is_some() {
-            // Check for END SCRIPT
+            // Skip structural keywords that might divide multiple script blocks
             if let (Some(Token::End), Some(Token::Script)) = (&self.current_token, &self.peek_token)
             {
-                self.next_token(); // consume Script
-                break;
+                self.next_token();
+                self.next_token();
+                continue;
+            }
+            if let (Some(Token::Start), Some(Token::Script)) = (&self.current_token, &self.peek_token)
+            {
+                self.next_token();
+                self.next_token();
+                continue;
+            }
+            if let (Some(Token::Script), Some(Token::Area)) = (&self.current_token, &self.peek_token)
+            {
+                self.next_token();
+                self.next_token();
+                continue;
             }
 
             if let Some(Token::Newline) = self.current_token {

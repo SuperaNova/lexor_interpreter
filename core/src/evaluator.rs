@@ -63,10 +63,20 @@ fn eval_statement(
 
         Statement::Declare(var_type, variables) => {
             for (name, init_expr) in variables {
-                let init_val = match init_expr {
+                let mut init_val = match init_expr {
                     Some(expr) => eval_expression(expr, env)?,
                     None => Object::Null,
                 };
+
+                if *var_type == Token::TypeBool {
+                    if let Object::String(ref s) = init_val {
+                        if s == "TRUE" {
+                            init_val = Object::Boolean(true);
+                        } else if s == "FALSE" {
+                            init_val = Object::Boolean(false);
+                        }
+                    }
+                }
 
                 if let Err(msg) = check_type_match(var_type, &init_val) {
                     return Some(Object::Error(format!(
@@ -221,8 +231,18 @@ fn eval_expression(expression: &Expression, env: &mut Environment) -> Option<Obj
         } => {
             if *operator == Token::Assign {
                 if let Expression::Identifier(name) = &**left {
-                    let val = eval_expression(right, env)?;
+                    let mut val = eval_expression(right, env)?;
                     if let Some(var_type) = env.get_type(name).cloned() {
+                        if var_type == Token::TypeBool {
+                            if let Object::String(ref s) = val {
+                                if s == "TRUE" {
+                                    val = Object::Boolean(true);
+                                } else if s == "FALSE" {
+                                    val = Object::Boolean(false);
+                                }
+                            }
+                        }
+
                         if let Err(msg) = check_type_match(&var_type, &val) {
                             return Some(Object::Error(format!(
                                 "Type mismatch cleanly blocked in assignment to '{}': {}",
@@ -478,6 +498,29 @@ START SCRIPT
 END SCRIPT
 ";
         assert_eq!(eval(input).unwrap(), Object::Integer(15));
+    }
+
+    #[test]
+    fn test_eval_declare_and_assign_bool_from_string() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE BOOL a = \"TRUE\"
+    DECLARE BOOL b = \"FALSE\"
+    a AND (NOT b)
+END SCRIPT
+";
+        assert_eq!(eval(input).unwrap(), Object::Boolean(true));
+        
+        let input2 = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE BOOL c = FALSE
+    c = \"TRUE\"
+    c
+END SCRIPT
+";
+        assert_eq!(eval(input2).unwrap(), Object::Boolean(true));
     }
 
     #[test]
