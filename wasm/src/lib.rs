@@ -44,6 +44,7 @@ impl EnvironmentIO for WasmIO {
 }
 
 #[wasm_bindgen]
+#[allow(clippy::boxed_local)]
 pub fn run_lexor(source_code: &str, inputs: Box<[JsValue]>) -> RunResult {
     let mapped_inputs: Vec<String> = inputs.iter().filter_map(|val| val.as_string()).collect();
 
