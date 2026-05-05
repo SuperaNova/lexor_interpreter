@@ -32,6 +32,11 @@ struct WasmIO {
 impl EnvironmentIO for WasmIO {
     fn read_line(&mut self) -> String {
         if self.inputs.is_empty() {
+            if let Some(window) = web_sys::window() {
+                if let Ok(Some(input)) = window.prompt_with_message("LEXOR Input Required:") {
+                    return input;
+                }
+            }
             String::new()
         } else {
             self.inputs.remove(0)
@@ -45,8 +50,8 @@ impl EnvironmentIO for WasmIO {
 
 #[wasm_bindgen]
 #[allow(clippy::boxed_local)]
-pub fn run_lexor(source_code: &str, inputs: Box<[JsValue]>) -> RunResult {
-    let mapped_inputs: Vec<String> = inputs.iter().filter_map(|val| val.as_string()).collect();
+pub fn run_lexor(source_code: &str, inputs: Option<Vec<String>>) -> RunResult {
+    let mapped_inputs = inputs.unwrap_or_default();
 
     let lexer = Lexer::new(source_code);
     let mut parser = Parser::new(lexer);
