@@ -27,15 +27,23 @@ impl RunResult {
 struct WasmIO {
     pub output_buffer: String,
     inputs: Vec<String>,
+    prompt_cancelled: bool,
 }
 
 impl EnvironmentIO for WasmIO {
     fn read_line(&mut self) -> String {
         if self.inputs.is_empty() {
-            if let Some(window) = web_sys::window() {
-                if let Ok(Some(input)) = window.prompt_with_message("LEXOR Input Required:") {
-                    return input;
+            if !self.prompt_cancelled {
+                let input = web_sys::window().and_then(|w| {
+                    w.prompt_with_message("LEXOR Input Required:")
+                        .ok()
+                        .flatten()
+                });
+
+                if let Some(val) = input {
+                    return val;
                 }
+                self.prompt_cancelled = true;
             }
             String::new()
         } else {
@@ -50,8 +58,16 @@ impl EnvironmentIO for WasmIO {
 
 #[wasm_bindgen]
 #[allow(clippy::boxed_local)]
-pub fn run_lexor(source_code: &str, inputs: Option<Vec<String>>) -> RunResult {
-    let mapped_inputs = inputs.unwrap_or_default();
+pub fn run_lexor(source_code: &str, inputs: Option<Box<[JsValue]>>) -> RunResult {
+    let mapped_inputs = inputs
+        .map(|values| {
+            values
+                .into_vec()
+                .into_iter()
+                .filter_map(|value| value.as_string())
+                .collect()
+        })
+        .unwrap_or_default();
 
     let lexer = Lexer::new(source_code);
     let mut parser = Parser::new(lexer);
@@ -70,6 +86,7 @@ pub fn run_lexor(source_code: &str, inputs: Option<Vec<String>>) -> RunResult {
             let mut io = WasmIO {
                 output_buffer: String::new(),
                 inputs: mapped_inputs,
+                prompt_cancelled: false,
             };
             let result = eval_program(&program, &mut env, &mut io);
 
