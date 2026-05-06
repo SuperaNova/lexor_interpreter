@@ -279,6 +279,7 @@ impl<'a> Parser<'a> {
 
             if let Some(stmt) = self.parse_statement() {
                 program.statements.push(stmt);
+                self.expect_statement_end();
             } else {
                 self.next_token(); // skip token to avoid infinite loop on error
             }
@@ -290,6 +291,41 @@ impl<'a> Parser<'a> {
     fn skip_newlines(&mut self) {
         while let Some(Token::Newline) = self.current_token {
             self.next_token();
+        }
+    }
+
+    /// Enforces the one-statement-per-line rule.
+    /// After every parsed statement, the current token must be a `Newline`, `EOF`, or an
+    /// upcoming block terminator (`END`). Anything else is a parse error; the parser then
+    /// skips forward to the next newline or block terminator so the block structure is preserved.
+    fn expect_statement_end(&mut self) {
+        match &self.current_token {
+            Some(Token::Newline) => {
+                self.next_token(); // consume the newline
+            }
+            None | Some(Token::End) => {} // EOF or upcoming END — fine, don't consume
+            _ => {
+                // Extract the inner token for a clean error message (e.g. "Declare" not "Some(Declare)").
+                let got = self
+                    .current_token
+                    .as_ref()
+                    .map(|t| format!("{:?}", t))
+                    .unwrap_or_else(|| "EOF".to_string());
+                self.push_error(format!(
+                    "Expected newline after statement, got {got}. Each statement must be on its own line."
+                ));
+                // Skip ahead, but stop at newlines, EOF, or block terminators (END) so
+                // the parser never accidentally consumes `END IF` / `END FOR` / etc.
+                while !matches!(
+                    self.current_token,
+                    Some(Token::Newline) | Some(Token::End) | None
+                ) {
+                    self.next_token();
+                }
+                if matches!(self.current_token, Some(Token::Newline)) {
+                    self.next_token();
+                }
+            }
         }
     }
 
@@ -427,6 +463,7 @@ impl<'a> Parser<'a> {
             }
             if let Some(stmt) = self.parse_statement() {
                 consequence.push(stmt);
+                self.expect_statement_end();
             } else {
                 self.next_token();
             }
@@ -472,6 +509,7 @@ impl<'a> Parser<'a> {
                     }
                     if let Some(stmt) = self.parse_statement() {
                         alt_stmts.push(stmt);
+                        self.expect_statement_end();
                     } else {
                         self.next_token();
                     }
@@ -550,6 +588,7 @@ impl<'a> Parser<'a> {
             }
             if let Some(stmt) = self.parse_statement() {
                 body.push(stmt);
+                self.expect_statement_end();
             } else {
                 self.next_token();
             }
@@ -603,6 +642,7 @@ impl<'a> Parser<'a> {
             }
             if let Some(stmt) = self.parse_statement() {
                 body.push(stmt);
+                self.expect_statement_end();
             } else {
                 self.next_token();
             }
@@ -714,6 +754,98 @@ mod tests {
                     right: Box::new(Expression::IntLiteral(4))
                 })
             }
+        );
+    }
+
+    // --- One-Statement-Per-Line Enforcement ---
+
+    fn parse_program_errors(input: &str) -> Vec<String> {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        parser.parse_program();
+        parser.errors
+    }
+
+    #[test]
+    fn test_valid_program_has_no_errors() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n    DECLARE INT x = 5\n    DECLARE INT y = 10\n    x = x + y\nEND SCRIPT\n";
+        let errors = parse_program_errors(input);
+        assert!(errors.is_empty(), "Expected no errors, got: {:?}", errors);
+    }
+
+    #[test]
+    fn test_two_statements_on_one_line_is_error() {
+        let input =
+            "SCRIPT AREA\nSTART SCRIPT\n    DECLARE INT x = 5 DECLARE INT y = 10\nEND SCRIPT\n";
+        let errors = parse_program_errors(input);
+        assert!(
+            !errors.is_empty(),
+            "Expected a parse error for two statements on one line"
+        );
+        assert!(
+            errors.iter().any(|e| e.contains("Expected newline")),
+            "Expected an 'Expected newline' error, got: {:?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn test_two_statements_on_one_line_in_if_body_is_error() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n    DECLARE INT x = 1\n    IF (x == 1)\n    START IF\n        x = 2 x = 3\n    END IF\nEND SCRIPT\n";
+        let errors = parse_program_errors(input);
+        assert!(
+            !errors.is_empty(),
+            "Expected a parse error for two statements on one line inside IF body"
+        );
+        assert!(
+            errors.iter().any(|e| e.contains("Expected newline")),
+            "Expected an 'Expected newline' error, got: {:?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn test_two_statements_on_one_line_in_else_body_is_error() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n    DECLARE INT x = 0\n    IF (x == 1)\n    START IF\n        x = 1\n    END IF\n    ELSE\n    START IF\n        x = 10 x = 20\n    END IF\nEND SCRIPT\n";
+        let errors = parse_program_errors(input);
+        assert!(
+            !errors.is_empty(),
+            "Expected a parse error for two statements on one line inside ELSE body"
+        );
+        assert!(
+            errors.iter().any(|e| e.contains("Expected newline")),
+            "Expected an 'Expected newline' error, got: {:?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn test_two_statements_on_one_line_in_for_body_is_error() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n    DECLARE INT i = 0\n    DECLARE INT x = 0\n    FOR (i = 1, i <= 3, i = i + 1)\n    START FOR\n        x = x + 1 x = x + 1\n    END FOR\nEND SCRIPT\n";
+        let errors = parse_program_errors(input);
+        assert!(
+            !errors.is_empty(),
+            "Expected a parse error for two statements on one line inside FOR body"
+        );
+        assert!(
+            errors.iter().any(|e| e.contains("Expected newline")),
+            "Expected an 'Expected newline' error, got: {:?}",
+            errors
+        );
+    }
+
+    #[test]
+    fn test_two_statements_on_one_line_in_repeat_body_is_error() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n    DECLARE INT count = 0\n    DECLARE INT x = 0\n    REPEAT WHEN (count < 3)\n    START REPEAT\n        count = count + 1 x = x + 1\n    END REPEAT\nEND SCRIPT\n";
+        let errors = parse_program_errors(input);
+        assert!(
+            !errors.is_empty(),
+            "Expected a parse error for two statements on one line inside REPEAT WHEN body"
+        );
+        assert!(
+            errors.iter().any(|e| e.contains("Expected newline")),
+            "Expected an 'Expected newline' error, got: {:?}",
+            errors
         );
     }
 }
