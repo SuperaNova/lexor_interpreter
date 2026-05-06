@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
     /// Enforces the one-statement-per-line rule.
     /// After every parsed statement, the current token must be a `Newline`, `EOF`, or an
     /// upcoming block terminator (`END`). Anything else is a parse error; the parser then
-    /// skips forward to the next newline so subsequent statements can still be recovered.
+    /// skips forward to the next newline or block terminator so the block structure is preserved.
     fn expect_statement_end(&mut self) {
         match &self.current_token {
             Some(Token::Newline) => {
@@ -305,12 +305,21 @@ impl<'a> Parser<'a> {
             }
             None | Some(Token::End) => {} // EOF or upcoming END — fine, don't consume
             _ => {
+                // Extract the inner token for a clean error message (e.g. "Declare" not "Some(Declare)").
+                let got = self
+                    .current_token
+                    .as_ref()
+                    .map(|t| format!("{:?}", t))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.push_error(format!(
-                    "Expected newline after statement, got {:?}. Each statement must be on its own line.",
-                    self.current_token
+                    "Expected newline after statement, got {got}. Each statement must be on its own line."
                 ));
-                // skip ahead to the next newline so the parser can continue.
-                while !matches!(self.current_token, Some(Token::Newline) | None) {
+                // Skip ahead, but stop at newlines, EOF, or block terminators (END) so
+                // the parser never accidentally consumes `END IF` / `END FOR` / etc.
+                while !matches!(
+                    self.current_token,
+                    Some(Token::Newline) | Some(Token::End) | None
+                ) {
                     self.next_token();
                 }
                 if matches!(self.current_token, Some(Token::Newline)) {
