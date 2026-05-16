@@ -295,6 +295,15 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // After END SCRIPT, nothing else is allowed in the file.
+        self.skip_newlines();
+        if self.current_token.is_some() {
+            self.push_error(format!(
+                "Unexpected content after END SCRIPT: {:?}. Only one SCRIPT AREA block is allowed.",
+                self.current_token
+            ));
+        }
+
         Some(program)
     }
 

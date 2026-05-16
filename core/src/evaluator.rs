@@ -443,12 +443,39 @@ mod tests {
         fn print(&mut self, _text: &str) {}
     }
 
+    /// Feed a queue of pre-defined inputs for SCAN tests.
+    struct MockIOWithInputs {
+        inputs: std::collections::VecDeque<String>,
+    }
+    impl MockIOWithInputs {
+        fn new(inputs: &[&str]) -> Self {
+            Self {
+                inputs: inputs.iter().map(|s| s.to_string()).collect(),
+            }
+        }
+    }
+    impl EnvironmentIO for MockIOWithInputs {
+        fn read_line(&mut self) -> String {
+            self.inputs.pop_front().unwrap_or_default()
+        }
+        fn print(&mut self, _text: &str) {}
+    }
+
     fn eval(input: &str) -> Option<Object> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
         let mut env = Environment::new();
         let mut io = MockIO;
+        eval_program(&program, &mut env, &mut io)
+    }
+
+    fn eval_with_inputs(input: &str, inputs: &[&str]) -> Option<Object> {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let mut env = Environment::new();
+        let mut io = MockIOWithInputs::new(inputs);
         eval_program(&program, &mut env, &mut io)
     }
 
@@ -717,5 +744,216 @@ END SCRIPT
 ";
         // (true and false) = false. false or (true and true) = true.
         assert_eq!(eval(input).unwrap(), Object::Boolean(true));
+    }
+
+    // --- SCAN Statement ---
+
+    #[test]
+    fn test_scan_int() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE INT x
+    SCAN: x
+    x
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["42"]).unwrap(),
+            Object::Integer(42)
+        );
+    }
+
+    #[test]
+    fn test_scan_float() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE FLOAT f
+    SCAN: f
+    f
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["3.14"]).unwrap(),
+            Object::Float(3.14)
+        );
+    }
+
+    #[test]
+    fn test_scan_bool_true_uppercase() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE BOOL b
+    SCAN: b
+    b
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["TRUE"]).unwrap(),
+            Object::Boolean(true)
+        );
+    }
+
+    #[test]
+    fn test_scan_bool_false_uppercase() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE BOOL b
+    SCAN: b
+    b
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["FALSE"]).unwrap(),
+            Object::Boolean(false)
+        );
+    }
+
+    #[test]
+    fn test_scan_multiple_variables() {
+        // SCAN two ints and verify both land in the right variables
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE INT a
+    DECLARE INT b
+    SCAN: a
+    SCAN: b
+    a + b
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["10", "32"]).unwrap(),
+            Object::Integer(42)
+        );
+    }
+
+    #[test]
+    fn test_scan_bool_used_in_expression() {
+        // Scanned booleans should participate in boolean logic
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE BOOL t1
+    DECLARE BOOL t2
+    SCAN: t1
+    SCAN: t2
+    (t1 OR t2) AND (NOT t1)
+END SCRIPT
+";
+        // t1=FALSE, t2=TRUE => (F OR T) AND (NOT F) => T AND T => TRUE
+        assert_eq!(
+            eval_with_inputs(input, &["FALSE", "TRUE"]).unwrap(),
+            Object::Boolean(true)
+        );
+    }
+
+    #[test]
+    fn test_scan_type_mismatch_is_error() {
+        // Feeding a string into a BOOL variable must produce an error
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE BOOL b
+    SCAN: b
+END SCRIPT
+";
+        matches!(eval_with_inputs(input, &["hello"]).unwrap(), Object::Error(_));
+    }
+
+    #[test]
+    fn test_scan_int_type_mismatch_is_error() {
+        // Feeding a float string into an INT variable must produce an error
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE INT x
+    SCAN: x
+END SCRIPT
+";
+        matches!(
+            eval_with_inputs(input, &["3.14"]).unwrap(),
+            Object::Error(_)
+        );
+    }
+
+    #[test]
+    fn test_scan_undeclared_variable_is_error() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    SCAN: ghost
+END SCRIPT
+";
+        matches!(eval_with_inputs(input, &["5"]).unwrap(), Object::Error(_));
+    }
+
+    // --- Int/Float Auto-Promotion (added in latest commit) ---
+
+    #[test]
+    fn test_int_plus_float_promotes_to_float() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n 2 + 1.5 \nEND SCRIPT";
+        assert_eq!(eval(input).unwrap(), Object::Float(3.5));
+    }
+
+    #[test]
+    fn test_float_plus_int_promotes_to_float() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n 1.5 + 2 \nEND SCRIPT";
+        assert_eq!(eval(input).unwrap(), Object::Float(3.5));
+    }
+
+    #[test]
+    fn test_int_minus_float_promotes_to_float() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n 5 - 2.5 \nEND SCRIPT";
+        assert_eq!(eval(input).unwrap(), Object::Float(2.5));
+    }
+
+    #[test]
+    fn test_float_times_int_promotes_to_float() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n 2.0 * 3 \nEND SCRIPT";
+        assert_eq!(eval(input).unwrap(), Object::Float(6.0));
+    }
+
+    #[test]
+    fn test_int_divided_by_float_promotes_to_float() {
+        let input = "SCRIPT AREA\nSTART SCRIPT\n 10 / 4.0 \nEND SCRIPT";
+        assert_eq!(eval(input).unwrap(), Object::Float(2.5));
+    }
+
+    #[test]
+    fn test_mixed_arithmetic_comparison() {
+        // 3 > 2.5 should promote and return true
+        let input = "SCRIPT AREA\nSTART SCRIPT\n 3 > 2.5 \nEND SCRIPT";
+        assert_eq!(eval(input).unwrap(), Object::Boolean(true));
+    }
+
+    // --- Parser: single SCRIPT AREA enforcement ---
+
+    #[test]
+    fn test_duplicate_script_area_is_parse_error() {
+        use crate::lexer::Lexer;
+        use crate::parser::Parser;
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    1
+END SCRIPT
+SCRIPT AREA
+START SCRIPT
+    2
+END SCRIPT
+";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        // The parser should have flagged a parse error for the duplicate block
+        assert!(
+            !parser.errors.is_empty(),
+            "Expected parse errors for duplicate SCRIPT AREA"
+        );
+        let _ = program;
     }
 }
