@@ -118,6 +118,18 @@ fn eval_statement(
                 };
 
                 if let Some(var_type) = env.get_type(var_name).cloned() {
+                    // Auto-promote Integer → Float when the target variable is FLOAT,
+                    // so typing "2" into a FLOAT variable works the same as "2.0".
+                    let obj = if var_type == Token::TypeFloat {
+                        if let Object::Integer(i) = obj {
+                            Object::Float(i as f32)
+                        } else {
+                            obj
+                        }
+                    } else {
+                        obj
+                    };
+
                     if let Err((expected, got)) = check_type_match(&var_type, &obj) {
                         return Some(Object::Error(LexorError::TypeError {
                             expected,
@@ -1002,5 +1014,22 @@ END SCRIPT
             "Expected parse errors for duplicate SCRIPT AREA"
         );
         let _ = program;
+    }
+
+    #[test]
+    fn test_scan_float_from_integer_input() {
+        // Typing a whole number like "2" into a FLOAT variable should auto-promote
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE FLOAT f
+    SCAN: f
+    f
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["2"]).unwrap(),
+            Object::Float(2.0)
+        );
     }
 }
