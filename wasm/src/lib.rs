@@ -1,7 +1,7 @@
 use lexor_core::environment::{Environment, EnvironmentIO};
 use lexor_core::evaluator::eval_program;
 use lexor_core::lexer::Lexer;
-use lexor_core::object::Object;
+use lexor_core::object::{LexorError, Object};
 use lexor_core::parser::Parser;
 use wasm_bindgen::prelude::*;
 
@@ -90,8 +90,15 @@ pub fn run_lexor(source_code: &str, inputs: Option<Box<[JsValue]>>) -> RunResult
             };
             let result = eval_program(&program, &mut env, &mut io);
 
-            let error = if let Some(Object::Error(msg)) = result {
-                Some(format!("FATAL RUNTIME ERROR:\n{}", msg))
+            let error = if let Some(Object::Error(err)) = result {
+                let category = match &err {
+                    LexorError::TypeError { .. } => "TypeError",
+                    LexorError::UndeclaredVariable { .. } => "UndeclaredVariable",
+                    LexorError::DivisionByZero { .. } => "DivisionByZero",
+                    LexorError::InvalidOperator { .. } => "InvalidOperator",
+                    LexorError::InvalidAssignmentTarget { .. } => "InvalidAssignmentTarget",
+                };
+                Some(format!("RUNTIME ERROR: {}\n{}", category, err))
             } else {
                 None
             };
