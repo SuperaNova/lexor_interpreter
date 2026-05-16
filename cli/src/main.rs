@@ -7,7 +7,7 @@ use lexor_core::environment::{Environment, EnvironmentIO};
 use lexor_core::evaluator::eval_program;
 use lexor_core::lexer::Lexer;
 use lexor_core::object::{LexorError, Object};
-use lexor_core::parser::Parser;
+use lexor_core::parser::{Parser, validate_program};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
@@ -57,25 +57,34 @@ fn main() {
             if !parser.errors.is_empty() {
                 println!("--- FATAL SYNTAX ERRORS ---");
                 for err in &parser.errors {
-                    println!("Error: {}", err);
+                    println!("  {}", err);
                 }
             } else {
-                let mut env = Environment::new();
-                let mut io = TerminalIO;
-                let result = eval_program(&program, &mut env, &mut io);
-
-                if let Some(Object::Error(err)) = result {
-                    let category = match &err {
-                        LexorError::TypeError { .. } => "TypeError",
-                        LexorError::UndeclaredVariable { .. } => "UndeclaredVariable",
-                        LexorError::DivisionByZero { .. } => "DivisionByZero",
-                        LexorError::InvalidOperator { .. } => "InvalidOperator",
-                        LexorError::InvalidAssignmentTarget { .. } => "InvalidAssignmentTarget",
-                    };
-                    println!("\n--- RUNTIME ERROR: {} ---", category);
-                    println!("{}", err);
+                // Semantic pass — catches undeclared SCAN targets before any code runs
+                let semantic_errors = validate_program(&program);
+                if !semantic_errors.is_empty() {
+                    println!("--- SEMANTIC ERRORS ---");
+                    for err in &semantic_errors {
+                        println!("  {}", err);
+                    }
                 } else {
-                    println!("\n--- Program finished executing. ---");
+                    let mut env = Environment::new();
+                    let mut io = TerminalIO;
+                    let result = eval_program(&program, &mut env, &mut io);
+
+                    if let Some(Object::Error(err)) = result {
+                        let category = match &err {
+                            LexorError::TypeError { .. } => "TypeError",
+                            LexorError::UndeclaredVariable { .. } => "UndeclaredVariable",
+                            LexorError::DivisionByZero { .. } => "DivisionByZero",
+                            LexorError::InvalidOperator { .. } => "InvalidOperator",
+                            LexorError::InvalidAssignmentTarget { .. } => "InvalidAssignmentTarget",
+                        };
+                        println!("\n--- RUNTIME ERROR: {} ---", category);
+                        println!("{}", err);
+                    } else {
+                        println!("\n--- Program finished executing. ---");
+                    }
                 }
             }
         }

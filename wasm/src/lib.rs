@@ -2,7 +2,7 @@ use lexor_core::environment::{Environment, EnvironmentIO};
 use lexor_core::evaluator::eval_program;
 use lexor_core::lexer::Lexer;
 use lexor_core::object::{LexorError, Object};
-use lexor_core::parser::Parser;
+use lexor_core::parser::{Parser, validate_program};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -79,6 +79,15 @@ pub fn run_lexor(source_code: &str, inputs: Option<Box<[JsValue]>>) -> RunResult
                 return RunResult {
                     output: String::new(),
                     error: Some(format!("FATAL SYNTAX ERRORS:\n{}", err_str)),
+                };
+            }
+
+            // Semantic pass — catches undeclared SCAN targets before any code runs
+            let semantic_errors = validate_program(&program);
+            if !semantic_errors.is_empty() {
+                return RunResult {
+                    output: String::new(),
+                    error: Some(format!("SEMANTIC ERRORS:\n{}", semantic_errors.join("\n"))),
                 };
             }
 
