@@ -110,6 +110,9 @@ fn eval_statement(
                     Object::Boolean(true)
                 } else if trimmed == "FALSE" {
                     Object::Boolean(false)
+                } else if trimmed.chars().count() == 1 {
+                    // Single character input → CHAR
+                    Object::Character(trimmed.chars().next().unwrap())
                 } else {
                     Object::String(trimmed.to_string())
                 };
@@ -901,6 +904,38 @@ START SCRIPT
 END SCRIPT
 ";
         matches!(eval_with_inputs(input, &["5"]).unwrap(), Object::Error(_));
+    }
+
+    #[test]
+    fn test_scan_char() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE CHAR c
+    SCAN: c
+    c
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["x"]).unwrap(),
+            Object::Character('x')
+        );
+    }
+
+    #[test]
+    fn test_scan_char_type_mismatch_is_error() {
+        // Multi-char string into a CHAR variable must produce an error
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE CHAR c
+    SCAN: c
+END SCRIPT
+";
+        matches!(
+            eval_with_inputs(input, &["hello"]).unwrap(),
+            Object::Error(_)
+        );
     }
 
     // --- Int/Float Auto-Promotion (added in latest commit) ---
