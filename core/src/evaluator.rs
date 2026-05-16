@@ -110,11 +110,23 @@ fn eval_statement(
                     Object::Boolean(true)
                 } else if trimmed == "FALSE" {
                     Object::Boolean(false)
+                } else if trimmed.chars().count() == 1 {
+                    // Single character input → CHAR
+                    Object::Character(trimmed.chars().next().unwrap())
                 } else {
                     Object::String(trimmed.to_string())
                 };
 
                 if let Some(var_type) = env.get_type(var_name).cloned() {
+                    // Type coercions that mirror C's implicit numeric conversions:
+                    //   INT  target + Float input  → truncate (floor toward zero)
+                    //   FLOAT target + Int input   → promote losslessly
+                    let obj = match (&var_type, obj) {
+                        (Token::TypeFloat, Object::Integer(i)) => Object::Float(i as f32),
+                        (Token::TypeInt, Object::Float(f)) => Object::Integer(f as i32),
+                        (_, obj) => obj,
+                    };
+
                     if let Err((expected, got)) = check_type_match(&var_type, &obj) {
                         return Some(Object::Error(LexorError::TypeError {
                             expected,
@@ -903,6 +915,38 @@ END SCRIPT
         matches!(eval_with_inputs(input, &["5"]).unwrap(), Object::Error(_));
     }
 
+    #[test]
+    fn test_scan_char() {
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE CHAR c
+    SCAN: c
+    c
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["x"]).unwrap(),
+            Object::Character('x')
+        );
+    }
+
+    #[test]
+    fn test_scan_char_type_mismatch_is_error() {
+        // Multi-char string into a CHAR variable must produce an error
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE CHAR c
+    SCAN: c
+END SCRIPT
+";
+        matches!(
+            eval_with_inputs(input, &["hello"]).unwrap(),
+            Object::Error(_)
+        );
+    }
+
     // --- Int/Float Auto-Promotion (added in latest commit) ---
 
     #[test]
@@ -967,5 +1011,86 @@ END SCRIPT
             "Expected parse errors for duplicate SCRIPT AREA"
         );
         let _ = program;
+    }
+
+    #[test]
+    fn test_scan_float_from_integer_input() {
+        // Typing a whole number like "2" into a FLOAT variable should auto-promote
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE FLOAT f
+    SCAN: f
+    f
+END SCRIPT
+";
+        assert_eq!(eval_with_inputs(input, &["2"]).unwrap(), Object::Float(2.0));
+    }
+
+    #[test]
+    fn test_scan_int_truncates_float_input() {
+        // Typing "2.9" into an INT variable should truncate to 2 (C-style floor)
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE INT x
+    SCAN: x
+    x
+END SCRIPT
+";
+        assert_eq!(
+            eval_with_inputs(input, &["2.9"]).unwrap(),
+            Object::Integer(2)
+        );
+    }
+
+    // --- Semantic Validation Pass ---
+
+    #[test]
+    fn test_semantic_scan_undeclared_is_error() {
+        use crate::lexer::Lexer;
+        use crate::parser::Parser;
+        use crate::parser::validate_program;
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    SCAN: ghost
+END SCRIPT
+";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let semantic_errors = validate_program(&program);
+        assert!(
+            !semantic_errors.is_empty(),
+            "Expected a semantic error for undeclared SCAN target"
+        );
+        assert!(
+            semantic_errors[0].contains("ghost"),
+            "Error should mention the undeclared variable name"
+        );
+    }
+
+    #[test]
+    fn test_semantic_scan_declared_is_ok() {
+        use crate::lexer::Lexer;
+        use crate::parser::Parser;
+        use crate::parser::validate_program;
+        let input = "
+SCRIPT AREA
+START SCRIPT
+    DECLARE INT x
+    SCAN: x
+END SCRIPT
+";
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let semantic_errors = validate_program(&program);
+        assert!(
+            semantic_errors.is_empty(),
+            "Expected no semantic errors for a declared SCAN target, got: {:?}",
+            semantic_errors
+        );
     }
 }

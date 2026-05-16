@@ -686,6 +686,87 @@ impl<'a> Parser<'a> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Semantic Validation Pass
+// ---------------------------------------------------------------------------
+// This runs after parsing, before evaluation. It checks properties that
+// require whole-program knowledge (e.g. that every SCAN target was declared).
+
+/// Walk the full program AST and return any semantic errors found.
+/// Call this after `parse_program` returns `Some(program)` and before `eval_program`.
+pub fn validate_program(program: &Program) -> Vec<String> {
+    let declared = collect_declared_names(&program.statements);
+    let mut errors = Vec::new();
+    check_scan_declarations(&program.statements, &declared, &mut errors);
+    errors
+}
+
+/// Recursively collect every variable name that appears in a `DECLARE` statement.
+fn collect_declared_names(stmts: &[Statement]) -> std::collections::HashSet<String> {
+    let mut names = std::collections::HashSet::new();
+    for stmt in stmts {
+        match stmt {
+            Statement::Declare(_, vars) => {
+                for (name, _) in vars {
+                    names.insert(name.clone());
+                }
+            }
+            Statement::If {
+                consequence,
+                alternative,
+                ..
+            } => {
+                names.extend(collect_declared_names(consequence));
+                if let Some(alt) = alternative {
+                    names.extend(collect_declared_names(alt));
+                }
+            }
+            Statement::For { body, .. } | Statement::RepeatWhen { body, .. } => {
+                names.extend(collect_declared_names(body));
+            }
+            _ => {}
+        }
+    }
+    names
+}
+
+/// Recursively check every `SCAN` statement and report variables that were never declared.
+fn check_scan_declarations(
+    stmts: &[Statement],
+    declared: &std::collections::HashSet<String>,
+    errors: &mut Vec<String>,
+) {
+    for stmt in stmts {
+        match stmt {
+            Statement::Scan(vars) => {
+                for name in vars {
+                    if !declared.contains(name) {
+                        errors.push(format!(
+                            "[SemanticError] SCAN target '{}' was never declared. \
+                             Add 'DECLARE <TYPE> {}' before scanning it.",
+                            name, name
+                        ));
+                    }
+                }
+            }
+            Statement::If {
+                consequence,
+                alternative,
+                ..
+            } => {
+                check_scan_declarations(consequence, declared, errors);
+                if let Some(alt) = alternative {
+                    check_scan_declarations(alt, declared, errors);
+                }
+            }
+            Statement::For { body, .. } | Statement::RepeatWhen { body, .. } => {
+                check_scan_declarations(body, declared, errors);
+            }
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
