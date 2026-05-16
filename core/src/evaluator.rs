@@ -333,6 +333,9 @@ fn eval_infix_expression(
     match (left, right) {
         (Object::Integer(l), Object::Integer(r)) => eval_integer_infix_expression(operator, l, r),
         (Object::Float(l), Object::Float(r)) => eval_float_infix_expression(operator, l, r),
+        // Auto-promote: Integer + Float or Float + Integer -> Float arithmetic
+        (Object::Integer(l), Object::Float(r)) => eval_float_infix_expression(operator, l as f32, r),
+        (Object::Float(l), Object::Integer(r)) => eval_float_infix_expression(operator, l, r as f32),
         (l, r) => {
             if *operator == Token::Eq {
                 Some(Object::Boolean(l == r))

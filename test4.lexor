@@ -1,0 +1,6 @@
+SCRIPT AREA
+START SCRIPT
+DECLARE INT a, b, c
+a = b = c = 5
+PRINT: a
+END SCRIPT

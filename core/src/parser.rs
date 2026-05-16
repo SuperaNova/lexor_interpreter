@@ -249,32 +249,45 @@ impl<'a> Parser<'a> {
         self.next_token(); // consume Script
         self.skip_newlines();
 
-        while self.current_token.is_some() {
-            // Skip structural keywords that might divide multiple script blocks
-            if let (Some(Token::End), Some(Token::Script)) = (&self.current_token, &self.peek_token)
-            {
-                self.next_token();
-                self.next_token();
-                continue;
-            }
-            if let (Some(Token::Start), Some(Token::Script)) =
-                (&self.current_token, &self.peek_token)
-            {
-                self.next_token();
-                self.next_token();
-                continue;
-            }
-            if let (Some(Token::Script), Some(Token::Area)) =
-                (&self.current_token, &self.peek_token)
-            {
-                self.next_token();
+        // Parse body until END SCRIPT
+        loop {
+            // Skip blank lines
+            if let Some(Token::Newline) = self.current_token {
                 self.next_token();
                 continue;
             }
 
-            if let Some(Token::Newline) = self.current_token {
-                self.next_token();
-                continue;
+            // Reached END SCRIPT — consume both tokens and stop
+            if let (Some(Token::End), Some(Token::Script)) =
+                (&self.current_token, &self.peek_token)
+            {
+                self.next_token(); // consume END
+                self.next_token(); // consume SCRIPT
+                break;
+            }
+
+            // EOF — stop
+            if self.current_token.is_none() {
+                break;
+            }
+
+            // Detect a second SCRIPT AREA or START SCRIPT — hard error
+            if let (Some(Token::Script), Some(Token::Area)) =
+                (&self.current_token, &self.peek_token)
+            {
+                self.push_error(
+                    "Only one SCRIPT AREA block is allowed per program.".to_string(),
+                );
+                return Some(program);
+            }
+            if let (Some(Token::Start), Some(Token::Script)) =
+                (&self.current_token, &self.peek_token)
+            {
+                self.push_error(
+                    "Unexpected START SCRIPT: only one script block is allowed per program."
+                        .to_string(),
+                );
+                return Some(program);
             }
 
             if let Some(stmt) = self.parse_statement() {
