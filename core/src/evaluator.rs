@@ -14,7 +14,7 @@
 
 use crate::ast::{Expression, Program, Statement};
 use crate::environment::{Environment, EnvironmentIO};
-use crate::object::Object;
+use crate::object::{LexorError, Object};
 use crate::tokens::Token;
 
 pub fn eval_program(
@@ -78,11 +78,12 @@ fn eval_statement(
                     }
                 }
 
-                if let Err(msg) = check_type_match(var_type, &init_val) {
-                    return Some(Object::Error(format!(
-                        "Type mismatch explicitly prevented in DECLARE for '{}': {}",
-                        name, msg
-                    )));
+                if let Err((expected, got)) = check_type_match(var_type, &init_val) {
+                    return Some(Object::Error(LexorError::TypeError {
+                        expected,
+                        got,
+                        context: format!("DECLARE '{}'", name),
+                    }));
                 }
 
                 env.set(name.clone(), var_type.clone(), init_val);
@@ -114,18 +115,18 @@ fn eval_statement(
                 };
 
                 if let Some(var_type) = env.get_type(var_name).cloned() {
-                    if let Err(msg) = check_type_match(&var_type, &obj) {
-                        return Some(Object::Error(format!(
-                            "Type mismatch safely prevented in SCAN input for '{}': {}",
-                            var_name, msg
-                        )));
+                    if let Err((expected, got)) = check_type_match(&var_type, &obj) {
+                        return Some(Object::Error(LexorError::TypeError {
+                            expected,
+                            got,
+                            context: format!("SCAN input for '{}'", var_name),
+                        }));
                     }
                     env.set(var_name.clone(), var_type, obj);
                 } else {
-                    return Some(Object::Error(format!(
-                        "Cannot aggressively scan into strictly undeclared variable '{}'",
-                        var_name
-                    )));
+                    return Some(Object::Error(LexorError::UndeclaredVariable {
+                        name: var_name.clone(),
+                    }));
                 }
             }
             Some(Object::Null)
@@ -213,10 +214,9 @@ fn eval_expression(expression: &Expression, env: &mut Environment) -> Option<Obj
 
         Expression::Identifier(name) => match env.get(name) {
             Some(val) => Some(val.clone()),
-            None => Some(Object::Error(format!(
-                "Identifier memory cache lookup failed (not declared): {}",
-                name
-            ))),
+            None => Some(Object::Error(LexorError::UndeclaredVariable {
+                name: name.clone(),
+            })),
         },
 
         Expression::Prefix { operator, right } => {
@@ -243,25 +243,24 @@ fn eval_expression(expression: &Expression, env: &mut Environment) -> Option<Obj
                             }
                         }
 
-                        if let Err(msg) = check_type_match(&var_type, &val) {
-                            return Some(Object::Error(format!(
-                                "Type mismatch cleanly blocked in assignment to '{}': {}",
-                                name, msg
-                            )));
+                        if let Err((expected, got)) = check_type_match(&var_type, &val) {
+                            return Some(Object::Error(LexorError::TypeError {
+                                expected,
+                                got,
+                                context: format!("assignment to '{}'", name),
+                            }));
                         }
                         env.set(name.clone(), var_type.clone(), val.clone());
                         return Some(val);
                     } else {
-                        return Some(Object::Error(format!(
-                            "Cannot assign to strictly undeclared variable '{}'",
-                            name
-                        )));
+                        return Some(Object::Error(LexorError::UndeclaredVariable {
+                            name: name.clone(),
+                        }));
                     }
                 } else {
-                    return Some(Object::Error(format!(
-                        "Invalid assignment structural target: {:?}",
-                        left
-                    )));
+                    return Some(Object::Error(LexorError::InvalidAssignmentTarget {
+                        detail: format!("left-hand side is not an identifier: {:?}", left),
+                    }));
                 }
             }
 
@@ -276,10 +275,10 @@ fn eval_prefix_expression(operator: &Token, right: Object) -> Option<Object> {
     match operator {
         Token::Minus => eval_minus_prefix_operator_expression(right),
         Token::Not => eval_not_operator_expression(right),
-        _ => Some(Object::Error(format!(
-            "Unknown mathematical abstract prefix operator: {:?}",
-            operator
-        ))),
+        _ => Some(Object::Error(LexorError::InvalidOperator {
+            op: format!("{:?}", operator),
+            context: "unrecognised prefix operator".to_string(),
+        })),
     }
 }
 
@@ -287,20 +286,20 @@ fn eval_minus_prefix_operator_expression(right: Object) -> Option<Object> {
     match right {
         Object::Integer(value) => Some(Object::Integer(-value)),
         Object::Float(value) => Some(Object::Float(-value)),
-        _ => Some(Object::Error(format!(
-            "Unsupported minus operator negation target: -{}",
-            right
-        ))),
+        _ => Some(Object::Error(LexorError::InvalidOperator {
+            op: "-".to_string(),
+            context: format!("cannot negate a non-numeric value: {}", right),
+        })),
     }
 }
 
 fn eval_not_operator_expression(right: Object) -> Option<Object> {
     match right {
         Object::Boolean(value) => Some(Object::Boolean(!value)),
-        _ => Some(Object::Error(format!(
-            "Unsupported structural NOT operator target: NOT {}",
-            right
-        ))),
+        _ => Some(Object::Error(LexorError::InvalidOperator {
+            op: "NOT".to_string(),
+            context: format!("NOT requires a BOOL, got: {}", right),
+        })),
     }
 }
 
@@ -346,10 +345,10 @@ fn eval_infix_expression(
             } else if *operator == Token::Neq {
                 Some(Object::Boolean(l != r))
             } else {
-                Some(Object::Error(format!(
-                    "Type mismatch securely trapped: {} {:?} {}",
-                    l, operator, r
-                )))
+                Some(Object::Error(LexorError::InvalidOperator {
+                    op: format!("{:?}", operator),
+                    context: format!("incompatible operands: {} and {}", l, r),
+                }))
             }
         }
     }
@@ -362,17 +361,17 @@ fn eval_integer_infix_expression(operator: &Token, left: i32, right: i32) -> Opt
         Token::Star => Some(Object::Integer(left * right)),
         Token::Slash => {
             if right == 0 {
-                return Some(Object::Error(String::from(
-                    "Attempted to divide exclusively by zero. Halt!",
-                )));
+                return Some(Object::Error(LexorError::DivisionByZero {
+                    detail: "integer division by zero".to_string(),
+                }));
             }
             Some(Object::Integer(left / right))
         }
         Token::Modulo => {
             if right == 0 {
-                return Some(Object::Error(String::from(
-                    "Attempted modulo completely by zero. Halt!",
-                )));
+                return Some(Object::Error(LexorError::DivisionByZero {
+                    detail: "integer modulo by zero".to_string(),
+                }));
             }
             Some(Object::Integer(left % right))
         }
@@ -382,10 +381,10 @@ fn eval_integer_infix_expression(operator: &Token, left: i32, right: i32) -> Opt
         Token::Gte => Some(Object::Boolean(left >= right)),
         Token::Eq => Some(Object::Boolean(left == right)),
         Token::Neq => Some(Object::Boolean(left != right)),
-        _ => Some(Object::Error(format!(
-            "Unknown exact integer logic operator: {:?}",
-            operator
-        ))),
+        _ => Some(Object::Error(LexorError::InvalidOperator {
+            op: format!("{:?}", operator),
+            context: "not a valid integer operator".to_string(),
+        })),
     }
 }
 
@@ -396,9 +395,9 @@ fn eval_float_infix_expression(operator: &Token, left: f32, right: f32) -> Optio
         Token::Star => Some(Object::Float(left * right)),
         Token::Slash => {
             if right == 0.0 {
-                return Some(Object::Error(String::from(
-                    "Attempted precision float division firmly by zero. Halt.",
-                )));
+                return Some(Object::Error(LexorError::DivisionByZero {
+                    detail: "float division by zero".to_string(),
+                }));
             }
             Some(Object::Float(left / right))
         }
@@ -408,24 +407,34 @@ fn eval_float_infix_expression(operator: &Token, left: f32, right: f32) -> Optio
         Token::Gte => Some(Object::Boolean(left >= right)),
         Token::Eq => Some(Object::Boolean(left == right)),
         Token::Neq => Some(Object::Boolean(left != right)),
-        _ => Some(Object::Error(format!(
-            "Unknown precision float operator: {:?}",
-            operator
-        ))),
+        _ => Some(Object::Error(LexorError::InvalidOperator {
+            op: format!("{:?}", operator),
+            context: "not a valid float operator".to_string(),
+        })),
     }
 }
 
-fn check_type_match(expected_type: &Token, obj: &Object) -> Result<(), String> {
+/// Returns `Ok(())` when the value matches the declared type, or
+/// `Err((expected_str, got_str))` so callers can build a [`LexorError::TypeError`].
+fn check_type_match(expected_type: &Token, obj: &Object) -> Result<(), (String, String)> {
     match (expected_type, obj) {
         (Token::TypeInt, Object::Integer(_)) => Ok(()),
         (Token::TypeFloat, Object::Float(_)) => Ok(()),
         (Token::TypeBool, Object::Boolean(_)) => Ok(()),
         (Token::TypeChar, Object::Character(_)) => Ok(()),
-        (_, Object::Null) => Ok(()), // Null is permitted generally when no initialization is supplied
-        (t, o) => Err(format!(
-            "Expected strongly defined type {:?}, but received {}",
-            t, o
-        )),
+        (_, Object::Null) => Ok(()), // Null is permitted when no initialiser is supplied
+        (t, o) => {
+            let expected = match t {
+                Token::TypeInt => "INT",
+                Token::TypeFloat => "FLOAT",
+                Token::TypeBool => "BOOL",
+                Token::TypeChar => "CHAR",
+                _ => "unknown",
+            }
+            .to_string();
+            let got = format!("{}", o);
+            Err((expected, got))
+        }
     }
 }
 
@@ -861,7 +870,10 @@ START SCRIPT
     SCAN: b
 END SCRIPT
 ";
-        matches!(eval_with_inputs(input, &["hello"]).unwrap(), Object::Error(_));
+        matches!(
+            eval_with_inputs(input, &["hello"]).unwrap(),
+            Object::Error(_)
+        );
     }
 
     #[test]
