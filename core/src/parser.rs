@@ -258,8 +258,7 @@ impl<'a> Parser<'a> {
             }
 
             // Reached END SCRIPT — consume both tokens and stop
-            if let (Some(Token::End), Some(Token::Script)) =
-                (&self.current_token, &self.peek_token)
+            if let (Some(Token::End), Some(Token::Script)) = (&self.current_token, &self.peek_token)
             {
                 self.next_token(); // consume END
                 self.next_token(); // consume SCRIPT
@@ -275,9 +274,7 @@ impl<'a> Parser<'a> {
             if let (Some(Token::Script), Some(Token::Area)) =
                 (&self.current_token, &self.peek_token)
             {
-                self.push_error(
-                    "Only one SCRIPT AREA block is allowed per program.".to_string(),
-                );
+                self.push_error("Only one SCRIPT AREA block is allowed per program.".to_string());
                 return Some(program);
             }
             if let (Some(Token::Start), Some(Token::Script)) =
